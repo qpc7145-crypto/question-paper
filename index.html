@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Question Paper — Coming Soon</title>
+  <meta name="description" content="Question Paper is coming soon.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%234f46e5'/><text x='16' y='22' font-family='Georgia,serif' font-size='17' font-weight='700' fill='white' text-anchor='middle'>Q</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #faf8f3;
+      --paper: #ffffff;
+      --ink: #1c1b22;
+      --muted: #6b6878;
+      --line: #e6e1d6;
+      --rule: #c9d6f0;
+      --margin: #f0b4b4;
+      --accent: #4f46e5;
+      --accent-soft: #eceafd;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121118;
+        --paper: #1b1a23;
+        --ink: #eeedf3;
+        --muted: #9d9aab;
+        --line: #2c2a37;
+        --rule: #2a3350;
+        --margin: #5a3036;
+        --accent: #8b84ff;
+        --accent-soft: #26244a;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 24px 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .sheet {
+      position: relative;
+      width: 100%;
+      max-width: 560px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 44px 36px 36px 64px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 18px 40px -20px rgba(30,20,60,.18);
+      background-image: repeating-linear-gradient(
+        to bottom, transparent 0, transparent 31px, var(--rule) 31px, var(--rule) 32px);
+      background-position: 0 22px;
+      overflow: hidden;
+    }
+    .sheet::before {
+      content: "";
+      position: absolute;
+      top: 0; bottom: 0; left: 44px;
+      width: 2px;
+      background: var(--margin);
+    }
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 6px 10px;
+      border-radius: 999px;
+    }
+    h1 {
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(36px, 8vw, 54px);
+      line-height: 1.05;
+      letter-spacing: -.02em;
+      margin: 20px 0 14px;
+    }
+    h1 .q { color: var(--accent); }
+    p.lead {
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.6;
+      max-width: 40ch;
+    }
+    ol {
+      list-style: none;
+      padding: 0;
+      margin: 28px 0 0;
+      display: grid;
+      gap: 10px;
+      counter-reset: q;
+    }
+    ol li {
+      counter-increment: q;
+      display: flex;
+      gap: 12px;
+      align-items: baseline;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    ol li::before {
+      content: "Q" counter(q) ".";
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 2.2em;
+    }
+    .foot {
+      margin-top: 34px;
+      padding-top: 18px;
+      border-top: 1px dashed var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-right: 8px;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { opacity: .3; } }
+    @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+    @media (max-width: 480px) {
+      .sheet { padding: 36px 22px 28px 48px; }
+      .sheet::before { left: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <span class="tag">Coming soon</span>
+    <h1>Question <span class="q">Paper</span></h1>
+    <p class="lead">We're putting the finishing touches on a better way to create, organise and share exam papers.</p>
+    <ol>
+      <li>Build papers from a question bank in minutes.</li>
+      <li>Print-ready layouts for every class and subject.</li>
+      <li>Answer keys generated alongside every paper.</li>
+    </ol>
+    <div class="foot">
+      <span><span class="dot"></span>In progress</span>
+      <span>&copy; <span id="y">2026</span> Question Paper</span>
+    </div>
+  </main>
+  <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+</body>
+</html>
