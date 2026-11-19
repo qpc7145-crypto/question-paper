@@ -1,14 +1,15 @@
 // Question Paper Bank & Examination Paper Management System — SRS v1.0
-// SQLite for local setup. String "enums" are used so the schema moves to
-// PostgreSQL by changing only the datasource provider.
+// PostgreSQL (Supabase). DATABASE_URL = pooled (transaction mode, ?pgbouncer=true),
+// DIRECT_URL = session-mode connection used for schema pushes.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------- Users & profiles (FR-1..FR-5) ----------

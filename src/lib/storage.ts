@@ -4,10 +4,64 @@ import path from "node:path";
 import { prisma } from "@/lib/db";
 import { HttpError } from "@/lib/http";
 
-// Secure file repository: files live outside /public under random keys and are only
-// ever returned through access-checked API routes (no direct URLs).
+// Secure file repository. Files are stored under random keys and are only ever
+// returned through access-checked API routes (no public URLs exist).
+//  - Supabase Storage (private bucket) when SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set
+//  - otherwise the local STORAGE_DIR (development)
 const ROOT = path.resolve(process.env.STORAGE_DIR || "./storage");
-const MAX_BYTES = Number(process.env.MAX_UPLOAD_MB || 20) * 1024 * 1024;
+// Vercel serverless functions accept request bodies up to 4.5 MB.
+const MAX_BYTES = Number(process.env.MAX_UPLOAD_MB || 4) * 1024 * 1024;
+const BUCKET = process.env.STORAGE_BUCKET || "papers";
+
+function supabase() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && key ? { url: url.replace(/\/$/, ""), key } : null;
+}
+
+export async function putObject(storageKey: string, data: Buffer, mimeType: string) {
+  const sb = supabase();
+  if (!sb) {
+    await fs.mkdir(ROOT, { recursive: true });
+    await fs.writeFile(path.join(ROOT, storageKey), data, { mode: 0o600 });
+    return;
+  }
+  const res = await fetch(`${sb.url}/storage/v1/object/${BUCKET}/${storageKey}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${sb.key}`, apikey: sb.key, "Content-Type": mimeType, "x-upsert": "false" },
+    body: new Uint8Array(data),
+  });
+  if (!res.ok) {
+    console.error("[storage] upload failed", res.status, await res.text().catch(() => ""));
+    throw new HttpError(502, "File storage is unavailable");
+  }
+}
+
+export async function getObject(storageKey: string): Promise<Buffer> {
+  const sb = supabase();
+  if (!sb) return fs.readFile(path.join(ROOT, storageKey));
+  const res = await fetch(`${sb.url}/storage/v1/object/${BUCKET}/${storageKey}`, {
+    headers: { Authorization: `Bearer ${sb.key}`, apikey: sb.key },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new HttpError(res.status === 404 ? 404 : 502, "Stored file could not be read");
+  return Buffer.from(await res.arrayBuffer());
+}
+
+// Creates the private bucket if missing (called by the seed script).
+export async function ensureBucket() {
+  const sb = supabase();
+  if (!sb) return;
+  const res = await fetch(`${sb.url}/storage/v1/bucket`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${sb.key}`, apikey: sb.key, "Content-Type": "application/json" },
+    body: JSON.stringify({ id: BUCKET, name: BUCKET, public: false, file_size_limit: 20 * 1024 * 1024 }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    if (!/already exists|Duplicate/i.test(text)) throw new Error(`Bucket creation failed: ${res.status} ${text}`);
+  }
+}
 
 const TYPES = {
   pdf: { mime: "application/pdf", magic: (b: Buffer) => b.subarray(0, 5).toString("latin1") === "%PDF-" },
@@ -26,6 +80,8 @@ export function extOf(name: string): string {
   return path.extname(name).slice(1).toLowerCase();
 }
 
+export const newStorageKey = () => crypto.randomBytes(24).toString("hex");
+
 export async function saveUpload(file: File, uploadedById: string) {
   if (!file || typeof file.arrayBuffer !== "function") throw new HttpError(400, "No file uploaded");
   if (file.size === 0) throw new HttpError(400, "File is empty");
@@ -35,9 +91,8 @@ export async function saveUpload(file: File, uploadedById: string) {
   const buf = Buffer.from(await file.arrayBuffer());
   if (!TYPES[ext].magic(buf)) throw new HttpError(415, "File content does not match its extension");
 
-  await fs.mkdir(ROOT, { recursive: true });
-  const storageKey = crypto.randomBytes(24).toString("hex");
-  await fs.writeFile(path.join(ROOT, storageKey), buf, { mode: 0o600 });
+  const storageKey = newStorageKey();
+  await putObject(storageKey, buf, TYPES[ext].mime);
   return prisma.storedFile.create({
     data: {
       storageKey,
@@ -52,7 +107,7 @@ export async function saveUpload(file: File, uploadedById: string) {
 
 export async function readStored(storageKey: string) {
   if (!/^[a-f0-9]{48}$/.test(storageKey)) throw new HttpError(400, "Invalid file key");
-  return fs.readFile(path.join(ROOT, storageKey));
+  return getObject(storageKey);
 }
 
 // Streams a stored file. `downloadName` lets callers hide the original file name,

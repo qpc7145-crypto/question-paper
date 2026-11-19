@@ -6,10 +6,15 @@ import bcrypt from "bcryptjs";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { PrismaClient } from "@prisma/client";
 import { audit } from "../src/lib/audit";
+import { ensureBucket, newStorageKey, putObject } from "../src/lib/storage";
 
+// Runs after every schema push (locally and in the Vercel build). Idempotent.
+//  - always: DB triggers + RLS lockdown, private storage bucket
+//  - SEED_DEMO=true: full demo data with shared test passwords (never in production)
+//  - otherwise: a single Controller from CONTROLLER_EMAIL / INITIAL_CONTROLLER_PASSWORD
 const prisma = new PrismaClient();
 const PASSWORD = "Password@2026";
-const STORAGE = path.resolve(process.env.STORAGE_DIR || "./storage");
+const DEMO = process.env.SEED_DEMO === "true" || process.argv.includes("--demo");
 
 const hours = (h: number) => new Date(Date.now() + h * 3600_000);
 const days = (d: number) => hours(d * 24);
@@ -34,9 +39,8 @@ async function makePdf(title: string, lines: string[]) {
 }
 
 async function storeFile(buf: Buffer, originalName: string, uploadedById: string) {
-  await fs.mkdir(STORAGE, { recursive: true });
-  const storageKey = crypto.randomBytes(24).toString("hex");
-  await fs.writeFile(path.join(STORAGE, storageKey), buf);
+  const storageKey = newStorageKey();
+  await putObject(storageKey, buf, "application/pdf");
   return prisma.storedFile.create({
     data: {
       storageKey, originalName, mimeType: "application/pdf", sizeBytes: buf.length,
@@ -45,12 +49,31 @@ async function storeFile(buf: Buffer, originalName: string, uploadedById: string
   });
 }
 
-async function main() {
-  await applyTriggers();
-  if (await prisma.user.findFirst({ where: { role: "CONTROLLER" } })) {
-    console.log("Database already seeded. Run `npm run db:reset` for a fresh copy.");
+async function seedProductionController() {
+  const email = (process.env.CONTROLLER_EMAIL || "").toLowerCase();
+  const password = process.env.INITIAL_CONTROLLER_PASSWORD || "";
+  if (!email || password.length < 12) {
+    console.warn("No Controller exists. Set CONTROLLER_EMAIL and INITIAL_CONTROLLER_PASSWORD (12+ chars) to create one.");
     return;
   }
+  const controller = await prisma.user.create({
+    data: { email, displayName: "Controller of Examinations", role: "CONTROLLER", passwordHash: await bcrypt.hash(password, 12) },
+  });
+  for (const [key, value] of [["currentSemester", process.env.CURRENT_SEMESTER || "Fall 2026"], ["institutionName", process.env.INSTITUTION_NAME || "Examinations Department"]]) {
+    await prisma.setting.upsert({ where: { key }, update: {}, create: { key, value } });
+  }
+  await audit({ actor: { id: controller.id, email, role: "CONTROLLER" }, action: "ACCOUNT_CREATED", entity: "User", entityId: controller.id, details: { bootstrap: true }, ip: null });
+  console.log(`Created Controller account ${email}. Change the initial password after first sign-in.`);
+}
+
+async function main() {
+  await applyTriggers();
+  await ensureBucket();
+  if (await prisma.user.findFirst({ where: { role: "CONTROLLER" } })) {
+    console.log("Database already seeded — triggers and bucket verified.");
+    return;
+  }
+  if (!DEMO) return seedProductionController();
   const hash = await bcrypt.hash(PASSWORD, 12);
   const user = (email: string, displayName: string, role: string) =>
     prisma.user.create({ data: { email, displayName, role, passwordHash: hash } });

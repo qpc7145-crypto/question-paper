@@ -6,12 +6,15 @@ Full-stack implementation of **SRS v1.0**, built with Next.js 14 (App Router), T
 
 ```bash
 npm install
-cp .env.example .env        # then set AUTH_SECRET (≥32 chars)
-npm run setup               # creates SQLite DB, DB triggers and seed data
+cp .env.example .env        # fill in DATABASE_URL, DIRECT_URL, AUTH_SECRET
+npm run setup:demo          # pushes schema, applies triggers/RLS, seeds demo data
 npm run dev                 # http://localhost:3000
 ```
 
-`npm run db:reset` wipes the database and reseeds it. The seeded ENG-101 paper unlocks for centres **3 minutes after seeding**, so you can watch the live countdown.
+Use a **separate** database for demo data. Production is seeded with a single Controller only (see `CONTROLLER_EMAIL` / `INITIAL_CONTROLLER_PASSWORD`). In demo data, the ENG-101 paper unlocks for centres **3 minutes after seeding**, so you can watch the live countdown.
+
+### Deployment (Vercel + Supabase)
+`vercel.json` runs `npm run vercel-build`. That command pushes the Prisma schema, re-applies the DB triggers and RLS lockdown, creates the private storage bucket and the first Controller if needed, then builds Next.js. Set every variable from `.env.example` in the Vercel project.
 
 ### Seed accounts (password for all: `Password@2026`)
 
@@ -80,7 +83,7 @@ Every request sends the `x-api-key: $INTEGRATION_API_KEY` header.
 New systems plug in by adding a handler module to `src/lib/integration/index.ts`.
 
 ## Production notes
-- **PostgreSQL:** change `provider` in `prisma/schema.prisma` to `postgresql` and set `DATABASE_URL`. The schema uses no SQLite-specific types. Port `prisma/triggers.sql` to PL/pgSQL triggers. Wrap `audit()` in `pg_advisory_xact_lock` when running more than one instance.
-- **Storage:** `STORAGE_DIR` must be persistent and private. For S3-compatible storage, swap the implementation of `saveUpload` / `readStored` in `src/lib/storage.ts`.
+- **Database:** PostgreSQL. `prisma/triggers.sql` enables RLS with no policies on every table, so Supabase's public Data API cannot read them. It also adds the append-only and archive-lock triggers. Audit writes take a `pg_advisory_xact_lock`, so concurrent serverless instances keep a single hash chain.
+- **Storage:** a private Supabase Storage bucket, accessed only server-side with the service-role key.
 - **Email:** set `SMTP_*` so OTPs are emailed instead of logged.
 - Word documents can carry author metadata. Setters are told to strip it, but consider server-side metadata scrubbing.

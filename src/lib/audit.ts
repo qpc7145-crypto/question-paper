@@ -31,8 +31,7 @@ function computeHash(prevHash: string, e: {
   return crypto.createHash("sha256").update(canonical).digest("hex");
 }
 
-// Serialise writers inside this process so the chain never forks.
-// (For multi-instance PostgreSQL deployments wrap this in pg_advisory_xact_lock.)
+// Serialise writers inside this process too (avoids lock contention between our own requests).
 let queue: Promise<unknown> = Promise.resolve();
 
 export function audit(input: AuditInput): Promise<void> {
@@ -44,8 +43,11 @@ export function audit(input: AuditInput): Promise<void> {
       ip = null; // called outside a request scope
     }
   }
-  const run = async () => {
-    const last = await prisma.auditLog.findFirst({ orderBy: { seq: "desc" }, select: { hash: true } });
+  const run = () => prisma.$transaction(async (tx) => {
+    // Serverless instances run concurrently: a transaction-scoped advisory lock
+    // guarantees a single linear hash chain across all of them.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(727274)`;
+    const last = await tx.auditLog.findFirst({ orderBy: { seq: "desc" }, select: { hash: true } });
     const prevHash = last?.hash ?? GENESIS_HASH;
     const at = new Date();
     const entry = {
@@ -59,10 +61,10 @@ export function audit(input: AuditInput): Promise<void> {
       details: JSON.stringify(input.details ?? {}),
       ip: ip ?? null,
     };
-    await prisma.auditLog.create({
+    await tx.auditLog.create({
       data: { ...entry, at, prevHash, hash: computeHash(prevHash, entry) },
     });
-  };
+  });
   const p = queue.then(run, run);
   queue = p.catch(() => undefined);
   return p as Promise<void>;
