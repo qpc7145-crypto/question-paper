@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-page text-ink antialiased; }
+  :focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; }
+}
+
+@layer components {
+  /* Global button system */
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all duration-150 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-[#1D4ED8] text-white shadow-sm hover:bg-[#1E40AF] disabled:bg-[#E2E8F0] disabled:text-[#94A3B8] disabled:shadow-none; }
+  .btn-secondary { @apply btn border border-[#CBD5E1] bg-white text-[#0F172A] hover:bg-[#F1F5F9] disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]; }
+  .btn-danger { @apply btn bg-[#DC2626] text-white hover:bg-[#B91C1C] disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]; }
+  .btn-locked { @apply btn cursor-not-allowed bg-[#E2E8F0] text-[#94A3B8]; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+
+  .card { @apply rounded-lg border border-[#E2E8F0] bg-white; }
+  .input { @apply block w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-ink placeholder:text-[#94A3B8] focus:border-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#1D4ED8]/20 disabled:bg-[#F1F5F9] disabled:text-muted; }
+  .label { @apply mb-1 block text-sm font-medium text-ink; }
+  .th { @apply px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted; }
+  .td { @apply px-4 py-3 align-top text-sm; }
+}
+
+/* Rich text editor & rendered paper content */
+.prose-paper { @apply text-[15px] leading-relaxed text-ink; }
+.prose-paper p { @apply my-2; }
+.prose-paper h1 { @apply mb-2 mt-4 text-xl font-semibold; }
+.prose-paper h2 { @apply mb-2 mt-4 text-lg font-semibold; }
+.prose-paper h3 { @apply mb-2 mt-3 text-base font-semibold; }
+.prose-paper ul { @apply my-2 list-disc pl-6; }
+.prose-paper ol { @apply my-2 list-decimal pl-6; }
+.prose-paper blockquote { @apply my-2 border-l-4 border-line pl-3 text-muted; }
+.prose-paper table { @apply my-3 w-full border-collapse; }
+.prose-paper td, .prose-paper th { @apply border border-[#CBD5E1] px-2 py-1 align-top; }
+.prose-paper th { @apply bg-[#F1F5F9] font-semibold; }
+.prose-paper pre { @apply my-2 rounded bg-[#F1F5F9] p-3 font-mono text-sm; }
+.ProseMirror { min-height: 220px; outline: none; }
+.ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #94A3B8; pointer-events: none; height: 0; }
+.ProseMirror .selectedCell:after { content: ""; position: absolute; inset: 0; background: rgba(29, 78, 216, 0.08); pointer-events: none; }
+.ProseMirror td, .ProseMirror th { position: relative; }

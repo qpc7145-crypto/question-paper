@@ -1,0 +1,250 @@
+// Question Paper Bank & Examination Paper Management System — SRS v1.0
+// SQLite for local setup. String "enums" are used so the schema moves to
+// PostgreSQL by changing only the datasource provider.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Users & profiles (FR-1..FR-5) ----------
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String
+  role              String // CONTROLLER | SETTER | TYPIST | SUPERINTENDENT
+  displayName       String
+  isActive          Boolean   @default(true)
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  sessionVersion    Int       @default(0) // bump to revoke all sessions (e.g. after password reset)
+  lastLoginAt       DateTime?
+  createdAt         DateTime  @default(now())
+  createdById       String?
+
+  setterProfile     SetterProfile?
+  superintendent    SuperintendentProfile?
+  centre            Centre?            @relation("CentreSuperintendent")
+
+  setterSubjects    Subject[]          @relation("SubjectSetter")
+  setterPapers      Paper[]            @relation("PaperSetter")
+  typistPapers      Paper[]            @relation("PaperTypist")
+  revisions         PaperRevision[]
+  passwordResets    PasswordReset[]
+  files             StoredFile[]
+}
+
+model SetterProfile {
+  userId           String   @id
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName         String
+  cnic             String
+  qualification    String
+  institution      String
+  experienceYears  Int
+  specialization   String
+  phone            String
+  address          String
+  subjectsEligible String // comma separated subject codes / names
+  completedAt      DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SuperintendentProfile {
+  userId       String   @id
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName     String
+  cnic         String
+  designation  String
+  organization String
+  phone        String
+  address      String
+  updatedAt    DateTime @updatedAt
+}
+
+model Centre {
+  id               String        @id @default(cuid())
+  code             String        @unique
+  name             String
+  address          String
+  city             String
+  capacity         Int           @default(0)
+  superintendentId String?       @unique
+  superintendent   User?         @relation("CentreSuperintendent", fields: [superintendentId], references: [id])
+  externalRef      String? // ERP centre id (FR-28)
+  createdAt        DateTime      @default(now())
+  assignments      PaperCentre[]
+  accessLogs       AccessLog[]
+}
+
+// ---------- Subjects & papers (FR-6..FR-22) ----------
+
+model Subject {
+  id                 String    @id @default(cuid())
+  code               String
+  title              String
+  semester           String // e.g. "Fall 2026"
+  examType           String // MIDTERM | FINAL | SUPPLEMENTARY | ...
+  examDate           DateTime // exam start date & time
+  submissionDeadline DateTime
+  setterId           String?
+  setter             User?     @relation("SubjectSetter", fields: [setterId], references: [id])
+  externalRef        String? // Result system / ERP mapping (FR-27)
+  createdAt          DateTime  @default(now())
+  paper              Paper?
+  resources          Resource[]
+
+  @@unique([code, semester, examType])
+}
+
+model Paper {
+  id                String          @id @default(cuid())
+  subjectId         String          @unique
+  subject           Subject         @relation(fields: [subjectId], references: [id])
+  setterId          String
+  setter            User            @relation("PaperSetter", fields: [setterId], references: [id])
+  typistId          String?
+  typist            User?           @relation("PaperTypist", fields: [typistId], references: [id])
+  typistCanSend     Boolean         @default(false) // delegation (FR-13)
+
+  status            String          @default("DRAFT") // DRAFT | SUBMITTED | UNDER_MODIFICATION | SENT_TO_CENTRE | USED | ARCHIVED
+  format            String          @default("RICH_TEXT") // RICH_TEXT | FILE
+  mode              String          @default("FREE") // FREE | STRUCTURED
+  contentHtml       String          @default("")
+  sectionAHtml      String          @default("")
+  sectionBHtml      String          @default("")
+  sectionCHtml      String          @default("")
+  instructions      String          @default("")
+  totalMarks        Int?
+  durationMinutes   Int?
+  fileId            String?         @unique
+  file              StoredFile?     @relation("PaperFile", fields: [fileId], references: [id])
+
+  revisionCount     Int             @default(0)
+  submittedAt       DateTime?
+  isLate            Boolean         @default(false)
+  sentAt            DateTime?
+  usedAt            DateTime?
+  archivedAt        DateTime?
+  releasedAsModel   Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  centres           PaperCentre[]
+  revisions         PaperRevision[]
+  accessLogs        AccessLog[]
+}
+
+model PaperRevision {
+  id          String   @id @default(cuid())
+  paperId     String
+  paper       Paper    @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  editorId    String
+  editor      User     @relation(fields: [editorId], references: [id])
+  editorRole  String
+  note        String   @default("")
+  snapshot    String // JSON of the content before the change
+  createdAt   DateTime @default(now())
+}
+
+// Multi-centre distribution (FR-17)
+model PaperCentre {
+  id              String    @id @default(cuid())
+  paperId         String
+  paper           Paper     @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  centreId        String
+  centre          Centre    @relation(fields: [centreId], references: [id])
+  availableFrom   DateTime // scheduled exam date/time for this centre (FR-18)
+  firstAccessAt   DateTime?
+  firstDownloadAt DateTime?
+  downloadCount   Int       @default(0)
+  createdAt       DateTime  @default(now())
+
+  @@unique([paperId, centreId])
+}
+
+// FR-19 usage logging (download time, access time, centre identity)
+model AccessLog {
+  id        String   @id @default(cuid())
+  paperId   String
+  paper     Paper    @relation(fields: [paperId], references: [id])
+  centreId  String
+  centre    Centre   @relation(fields: [centreId], references: [id])
+  userId    String
+  kind      String // ACCESS | DOWNLOAD
+  ip        String?
+  userAgent String?
+  at        DateTime @default(now())
+}
+
+// ---------- Files & resources (FR-8, FR-15, FR-16) ----------
+
+model StoredFile {
+  id           String    @id @default(cuid())
+  storageKey   String    @unique // random name inside STORAGE_DIR, never exposed
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  uploadedById String
+  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime  @default(now())
+  paper        Paper?    @relation("PaperFile")
+  resource     Resource?
+}
+
+model Resource {
+  id        String     @id @default(cuid())
+  kind      String // SYLLABUS | MODEL_PAPER
+  title     String
+  semester  String?
+  subjectId String?
+  subject   Subject?   @relation(fields: [subjectId], references: [id])
+  fileId    String     @unique
+  file      StoredFile @relation(fields: [fileId], references: [id])
+  createdAt DateTime   @default(now())
+}
+
+// ---------- Security ----------
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otpHash   String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// Append-only, hash-chained audit log (FR-26). UPDATE/DELETE are blocked by
+// database triggers created in prisma/triggers.sql (applied by the seed script).
+model AuditLog {
+  seq       Int      @id @default(autoincrement())
+  at        DateTime @default(now())
+  userId    String?
+  userEmail String?
+  role      String?
+  action    String
+  entity    String?
+  entityId  String?
+  details   String   @default("{}")
+  ip        String?
+  prevHash  String
+  hash      String   @unique
+
+  @@index([action])
+  @@index([userId])
+  @@index([at])
+}
+
+model Setting {
+  key   String @id
+  value String
+}

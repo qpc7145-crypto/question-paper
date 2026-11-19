@@ -1,3 +1,16 @@
 .envrc
 .env*
+!.env.example
 .vercel
+
+# dependencies / build
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# local database & secure file repository (never commit papers)
+prisma/*.db
+prisma/*.db-journal
+storage/
