@@ -44,3 +44,5 @@ export const POST = route(async (req: Request) => {
   await audit({ actor, action: "CENTRE_CREATED", entity: "Centre", entityId: centre.id, details: { code: centre.code } });
   return ok({ centre }, 201);
 });
+
+export const dynamic = "force-dynamic";

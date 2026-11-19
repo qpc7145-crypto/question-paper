@@ -70,3 +70,5 @@ export const GET = route(async (req: Request, { params }: Ctx) => {
   });
   return htmlResponse(html, `${base}.html`, mode === "DOWNLOAD");
 });
+
+export const dynamic = "force-dynamic";

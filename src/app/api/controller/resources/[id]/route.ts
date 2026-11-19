@@ -14,3 +14,5 @@ export const DELETE = route(async (_req: Request, { params }: Ctx) => {
   await audit({ actor, action: "RESOURCE_DELETED", entity: "Resource", entityId: r.id, details: { kind: r.kind, title: r.title } });
   return ok({ ok: true });
 });
+
+export const dynamic = "force-dynamic";

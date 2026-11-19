@@ -17,3 +17,5 @@ async function dispatch(req: Request, { params }: Ctx) {
 
 export const GET = route(dispatch);
 export const POST = route(dispatch);
+
+export const dynamic = "force-dynamic";

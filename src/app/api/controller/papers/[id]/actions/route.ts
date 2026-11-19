@@ -100,3 +100,5 @@ export const POST = route(async (req: Request, { params }: Ctx) => {
   }
   return ok({ paper: controllerPaperView(await loadPaper(p.id)) });
 });
+
+export const dynamic = "force-dynamic";

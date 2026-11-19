@@ -40,3 +40,5 @@ export const POST = route(async (req: Request) => {
   await audit({ actor, action: "PASSWORD_RESET_COMPLETED" });
   return ok({ message: "Password updated. You can now sign in." });
 });
+
+export const dynamic = "force-dynamic";

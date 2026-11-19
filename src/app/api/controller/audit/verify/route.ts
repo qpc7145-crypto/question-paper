@@ -7,3 +7,5 @@ export const GET = route(async () => {
   await requireUser("CONTROLLER");
   return ok(await verifyAuditChain());
 });
+
+export const dynamic = "force-dynamic";

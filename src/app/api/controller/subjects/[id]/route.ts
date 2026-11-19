@@ -69,3 +69,5 @@ export const PATCH = route(async (req: Request, { params }: Ctx) => {
   }
   return ok({ subject: updated });
 });
+
+export const dynamic = "force-dynamic";

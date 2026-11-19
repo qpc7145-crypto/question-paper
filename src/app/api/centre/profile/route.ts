@@ -30,3 +30,5 @@ export const PUT = route(async (req: Request) => {
   await audit({ actor: u, action: "BIODATA_UPDATED", entity: "SuperintendentProfile", entityId: u.id });
   return ok({ ok: true });
 });
+
+export const dynamic = "force-dynamic";

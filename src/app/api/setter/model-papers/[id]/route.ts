@@ -23,3 +23,5 @@ export const GET = route(async (_req: Request, { params }: Ctx) => {
   const html = renderPaperDocument(p, { institution: await getInstitutionName(), banner: "MODEL PAPER — for reference only" });
   return htmlResponse(html, `${p.subject.code}-model.html`, false);
 });
+
+export const dynamic = "force-dynamic";

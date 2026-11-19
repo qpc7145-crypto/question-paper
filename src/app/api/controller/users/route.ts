@@ -60,3 +60,5 @@ export const POST = route(async (req: Request) => {
   // The temporary password is shown once to the Controller and never stored in plain text.
   return ok({ user: { id: user.id, email, role: user.role }, temporaryPassword: input.password ? null : password }, 201);
 });
+
+export const dynamic = "force-dynamic";

@@ -29,3 +29,5 @@ export const GET = route(async (_req: Request, { params }: Ctx) => {
   });
   return htmlResponse(html, `${p.subject.code}-preview.html`, false);
 });
+
+export const dynamic = "force-dynamic";

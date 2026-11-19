@@ -41,3 +41,5 @@ export const PATCH = route(async (req: Request, { params }: Ctx) => {
   const p = await updateContent(params.id, actor, input);
   return ok({ paper: controllerPaperView(p) });
 });
+
+export const dynamic = "force-dynamic";

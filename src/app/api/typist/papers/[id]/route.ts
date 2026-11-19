@@ -32,3 +32,5 @@ export const POST = route(async (_req: Request, { params }: Ctx) => {
   if (!(await assigned(params.id, u.id))) return fail(404, "Paper not found");
   return ok({ paper: typistPaperView(await sendToCentres(params.id, u)) });
 });
+
+export const dynamic = "force-dynamic";

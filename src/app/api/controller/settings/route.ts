@@ -24,3 +24,5 @@ export const PUT = route(async (req: Request) => {
   await audit({ actor, action: "SETTINGS_UPDATED", details: input });
   return ok({ ok: true });
 });
+
+export const dynamic = "force-dynamic";

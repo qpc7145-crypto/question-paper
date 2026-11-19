@@ -14,3 +14,5 @@ export const GET = route(async (req: Request) => {
   if (type === "centres") return ok({ rows: await centreUsage(semester), semesters });
   return fail(400, "type must be setters or centres");
 });
+
+export const dynamic = "force-dynamic";

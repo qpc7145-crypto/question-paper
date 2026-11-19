@@ -39,3 +39,5 @@ export const POST = route(async (req: Request) => {
   }
   return ok({ subject }, 201);
 });
+
+export const dynamic = "force-dynamic";

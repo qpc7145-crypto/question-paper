@@ -36,3 +36,5 @@ export const PATCH = route(async (req: Request, { params }: Ctx) => {
   await audit({ actor, action: "ACCOUNT_UPDATED", entity: "User", entityId: u.id, details: input });
   return ok({ ok: true });
 });
+
+export const dynamic = "force-dynamic";

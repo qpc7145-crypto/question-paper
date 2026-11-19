@@ -36,3 +36,5 @@ export const GET = route(async () => {
     releasedPapers: releasedPapers.map((p) => ({ paperId: p.id, ...p.subject })),
   });
 });
+
+export const dynamic = "force-dynamic";

@@ -36,3 +36,5 @@ export const POST = route(async (req: Request) => {
   }
   return ok({ message: "If an account exists for this email, a 6-digit code has been sent." });
 });
+
+export const dynamic = "force-dynamic";

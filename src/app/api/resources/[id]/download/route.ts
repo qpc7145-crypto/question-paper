@@ -19,3 +19,5 @@ export const GET = route(async (_req: Request, { params }: Ctx) => {
   await audit({ actor, action: "RESOURCE_DOWNLOADED", entity: "Resource", entityId: r.id, details: { kind: r.kind } });
   return fileResponse(r.file, safeName(r.title, r.file.originalName));
 });
+
+export const dynamic = "force-dynamic";

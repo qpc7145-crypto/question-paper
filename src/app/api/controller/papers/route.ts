@@ -25,3 +25,5 @@ export const GET = route(async (req: Request) => {
     currentSemester: await getCurrentSemester(),
   });
 });
+
+export const dynamic = "force-dynamic";

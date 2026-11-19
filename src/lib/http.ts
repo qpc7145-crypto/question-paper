@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { ZodError, type ZodSchema } from "zod";
+import { ZodError, type z, type ZodTypeAny } from "zod";
 
 export class HttpError extends Error {
   constructor(
@@ -23,6 +23,10 @@ export function route<A extends unknown[]>(fn: (...args: A) => Promise<Response>
     try {
       return await fn(...args);
     } catch (e) {
+      // Let Next.js' internal control-flow signals through (e.g. it uses this one at
+      // build time to detect that a route reads cookies/headers and must stay dynamic).
+      const digest = (e as { digest?: unknown } | null)?.digest;
+      if (typeof digest === "string" && (digest === "DYNAMIC_SERVER_USAGE" || digest.startsWith("NEXT_"))) throw e;
       if (e instanceof HttpError) return fail(e.status, e.message);
       if (e instanceof ZodError) {
         return fail(400, e.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; "));
@@ -33,7 +37,7 @@ export function route<A extends unknown[]>(fn: (...args: A) => Promise<Response>
   };
 }
 
-export async function body<T>(req: Request, schema: ZodSchema<T>): Promise<T> {
+export async function body<S extends ZodTypeAny>(req: Request, schema: S): Promise<z.output<S>> {
   let raw: unknown;
   try {
     raw = await req.json();

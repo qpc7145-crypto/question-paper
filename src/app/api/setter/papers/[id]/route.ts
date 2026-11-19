@@ -34,3 +34,5 @@ export const POST = route(async (_req: Request, { params }: Ctx) => {
   const p = await submitPaper(params.id, u);
   return ok({ paper: setterPaperView(p) });
 });
+
+export const dynamic = "force-dynamic";

@@ -22,3 +22,5 @@ export const POST = route(async (req: Request, { params }: Ctx) => {
     actor.role === "CONTROLLER" ? controllerPaperView(updated) : actor.role === "TYPIST" ? typistPaperView(updated) : setterPaperView(updated);
   return ok({ paper: view });
 });
+
+export const dynamic = "force-dynamic";

@@ -8,3 +8,5 @@ export const POST = route(async () => {
   clearSession();
   return ok({ ok: true });
 });
+
+export const dynamic = "force-dynamic";

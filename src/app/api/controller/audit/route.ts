@@ -17,3 +17,5 @@ export const GET = route(async (req: Request) => {
   ]);
   return ok({ total, page, pageSize, rows, actions: AUDIT_ACTIONS });
 });
+
+export const dynamic = "force-dynamic";

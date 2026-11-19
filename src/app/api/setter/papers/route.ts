@@ -23,3 +23,5 @@ export const GET = route(async (req: Request) => {
     semesters,
   });
 });
+
+export const dynamic = "force-dynamic";

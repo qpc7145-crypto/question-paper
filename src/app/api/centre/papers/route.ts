@@ -17,3 +17,5 @@ export const GET = route(async () => {
   ]);
   return ok({ centre, serverNow: now, papers: assignments.map((a) => centreAssignmentView(a, now)) });
 });
+
+export const dynamic = "force-dynamic";

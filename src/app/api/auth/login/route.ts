@@ -49,3 +49,5 @@ export const POST = route(async (req: Request) => {
   const home = ROLE_HOME[user.role as Role];
   return ok({ redirect: user.role === "SETTER" && !pc ? "/setter/biodata" : home });
 });
+
+export const dynamic = "force-dynamic";
