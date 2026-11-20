@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifySession } from "@/lib/auth/session";
 import { ROLE_HOME, SESSION_COOKIE, type Role } from "@/lib/constants";
+import { DEMO } from "@/lib/demo/flag";
 
 // Page-level RBAC. API routes perform their own (database-backed) checks too.
 const AREA: Record<string, Role> = {
@@ -14,6 +15,18 @@ const PUBLIC = ["/login", "/forgot-password"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  if (pathname.startsWith("/api/")) {
+    // Design preview: no backend. Links to files and exports get a placeholder page instead.
+    if (DEMO && !pathname.startsWith("/api/demo/") && pathname !== "/api/auth/logout") {
+      const url = new URL("/api/demo/unavailable", req.url);
+      const headers = new Headers(req.headers);
+      headers.set("x-demo-from", pathname + req.nextUrl.search);
+      return NextResponse.rewrite(url, { request: { headers } });
+    }
+    return NextResponse.next();
+  }
+
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await verifySession(token) : null;
 
@@ -47,5 +60,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

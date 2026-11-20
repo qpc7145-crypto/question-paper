@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { api } from "@/lib/client";
 import { Alert, Field } from "@/components/ui";
 import { AuthFrame } from "@/components/AuthFrame";
+import { ROLE_LABEL, type Role } from "@/lib/constants";
 
 function LoginForm() {
   const sp = useSearchParams();
@@ -48,7 +49,33 @@ function LoginForm() {
           Forgot password?
         </Link>
       </p>
+      {DEMO && <DemoRoles />}
     </form>
+  );
+}
+
+const DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
+const DEMO_ROLES: { role: Role; hint: string }[] = [
+  { role: "CONTROLLER", hint: "Full authority" },
+  { role: "SETTER", hint: "Writes papers" },
+  { role: "TYPIST", hint: "Formats papers" },
+  { role: "SUPERINTENDENT", hint: "Downloads at exam time" },
+];
+
+function DemoRoles() {
+  return (
+    <div className="border-t border-line pt-4">
+      <p className="text-sm font-medium">Design preview</p>
+      <p className="mb-3 text-xs text-muted">No backend is connected. Pick a role to explore with sample data. Changes reset when you reload.</p>
+      <div className="grid grid-cols-2 gap-2">
+        {DEMO_ROLES.map((r) => (
+          <a key={r.role} href={`/api/demo/login?role=${r.role}`} className="btn-secondary flex-col items-start gap-0 text-left">
+            <span className="text-sm font-medium">{ROLE_LABEL[r.role].replace(" of Examination", "")}</span>
+            <span className="text-xs font-normal text-muted">{r.hint}</span>
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
 

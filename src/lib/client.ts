@@ -16,6 +16,10 @@ async function handle401(status: number) {
 }
 
 export async function api<T = unknown>(url: string, init?: RequestInit & { json?: unknown }): Promise<T> {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === "1") {
+    const { demoApi } = await import("@/lib/demo/api");
+    return demoApi<T>(url, init);
+  }
   const { json, ...rest } = init ?? {};
   const res = await fetch(url, {
     ...rest,
