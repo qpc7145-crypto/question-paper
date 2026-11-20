@@ -7,6 +7,7 @@ import { assertTransition } from "@/lib/lifecycle";
 import { loadPaper, sendToCentres } from "@/lib/papers";
 import { controllerPaperView } from "@/lib/serializers";
 import { getCurrentSemester } from "@/lib/settings";
+import { unlockTimeError } from "@/lib/semesters";
 
 type Ctx = { params: { id: string } };
 
@@ -54,6 +55,16 @@ export const POST = route(async (req: Request, { params }: Ctx) => {
       const ids = Array.from(new Set(input.centres.map((c) => c.centreId)));
       const found = await prisma.centre.count({ where: { id: { in: ids } } });
       if (found !== ids.length) return fail(400, "One or more centres do not exist");
+      // FR-18: a new or changed unlock time must be in the future and close to the exam start.
+      const nowMs = Date.now();
+      for (const c of input.centres) {
+        const when = c.availableFrom ?? p.subject.examDate;
+        const prev = p.centres.find((x) => x.centreId === c.centreId);
+        if (prev && prev.availableFrom.getTime() === when.getTime()) continue;
+        const code = (await prisma.centre.findUnique({ where: { id: c.centreId }, select: { code: true } }))?.code ?? c.centreId;
+        const err = unlockTimeError(when, p.subject.examDate, code, nowMs);
+        if (err) return fail(400, err);
+      }
       const removed = p.centres.filter((c) => !ids.includes(c.centreId));
       if (removed.some((c) => c.downloadCount > 0)) return fail(409, "A centre that already downloaded the paper cannot be removed");
       await prisma.$transaction([

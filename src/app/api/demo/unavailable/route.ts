@@ -1,19 +1,17 @@
-import { renderPaperDocument } from "@/lib/render-paper";
-import { DEMO, INSTITUTION, PAPERS } from "@/lib/demo/data";
+import { NextResponse } from "next/server";
+import { DEMO } from "@/lib/demo/flag";
 
-// In the design preview, file downloads, previews and exports have no backend.
-// Paper previews render the sample paper; everything else explains what would happen.
+// In the design preview there is no backend for file downloads, previews and exports.
+// Paper previews, centre downloads and model papers are sent to /demo/view, which renders
+// them in the browser after applying the same access checks as the real routes.
+// Everything else explains what would happen.
 export async function GET(req: Request) {
   if (!DEMO) return new Response("Not found", { status: 404 });
   const from = req.headers.get("x-demo-from") ?? "";
-  const id = from.match(/^\/api\/(?:papers\/([^/]+)\/preview|centre\/papers\/([^/]+)\/download|setter\/model-papers\/([^/?]+))/);
-  const paper = id && PAPERS.find((p) => p.id === (id[1] ?? id[2] ?? id[3]));
-  if (paper) {
-    const html = renderPaperDocument(
-      { ...paper, subject: { ...paper.subject, examDate: new Date(paper.subject.examDate) } },
-      { institution: INSTITUTION, watermark: from.includes("/centre/") ? "LHR-01 · DEMO" : undefined, banner: "Design preview — sample paper" },
-    );
-    return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  if (/^\/api\/(papers\/[^/]+\/preview|centre\/papers\/[^/]+\/download|setter\/model-papers\/[^/?]+)/.test(from)) {
+    const url = new URL("/demo/view", req.url);
+    url.searchParams.set("src", from);
+    return NextResponse.redirect(url);
   }
   const what = from.includes("/export") ? "Report export (PDF / Excel)" : "File download";
   return new Response(

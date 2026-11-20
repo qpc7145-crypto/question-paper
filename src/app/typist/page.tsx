@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { FileText, Send } from "lucide-react";
 import { fmtDateTime, qs, useApi } from "@/lib/client";
-import { Alert, Card, Empty, PageHeader, Pill, SemesterFilter, Spinner, StatusBadge, Table } from "@/components/ui";
+import { Alert, Card, Empty, PageHeader, Pill, SemesterFilter, Spinner, Stat, StatusBadge, Table } from "@/components/ui";
 
 type Row = {
   id: string; status: string; canSend: boolean; revisionCount: number; editable: boolean;
@@ -24,6 +24,14 @@ export default function TypistDashboard() {
         actions={<SemesterFilter semesters={data?.semesters ?? []} value={semester} onChange={setSemester} />}
       />
       {error && <Alert>{error}</Alert>}
+      {!loading && (
+        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Assigned" value={papers.length} />
+          <Stat label="To modify" value={papers.filter((p) => p.editable).length} tone={papers.some((p) => p.editable) ? "amber" : undefined} />
+          <Stat label="Delegated to send" value={papers.filter((p) => p.canSend && p.editable).length} />
+          <Stat label="Sent / used" value={papers.filter((p) => p.status === "SENT_TO_CENTRE" || p.status === "USED").length} />
+        </div>
+      )}
       <Card bodyClass="p-0">
         {loading ? (
           <div className="px-5"><Spinner /></div>

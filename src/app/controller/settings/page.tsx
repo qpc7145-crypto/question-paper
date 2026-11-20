@@ -29,7 +29,7 @@ export default function SettingsPage() {
           <Field label="Institution name" hint="Printed on the header of every question paper">
             <input className="input" required value={f.institutionName} onChange={(e) => setF({ ...f, institutionName: e.target.value })} />
           </Field>
-          <Field label="Current semester" hint="Model papers can only be released from semesters other than this one (FR-22)">
+          <Field label="Current semester" hint="Model papers can only be released from semesters other than this one">
             <input className="input" required list="sem" value={f.currentSemester} onChange={(e) => setF({ ...f, currentSemester: e.target.value })} />
             <datalist id="sem">{data?.semesters.map((s) => <option key={s} value={s} />)}</datalist>
           </Field>

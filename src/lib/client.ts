@@ -36,22 +36,29 @@ export async function api<T = unknown>(url: string, init?: RequestInit & { json?
 }
 
 export function useApi<T>(url: string | null) {
-  const [data, setData] = useState<T | null>(null);
+  // Data is tagged with the URL it came from. When the URL changes (e.g. a report tab switch),
+  // the old response is never handed to a render that expects the new shape.
+  const [state, setState] = useState<{ url: string | null; data: T | null }>({ url: null, data: null });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const urlRef = useRef(url);
   urlRef.current = url;
 
   const reload = useCallback(async () => {
-    if (!urlRef.current) return;
+    const u = urlRef.current;
+    if (!u) return;
     setLoading(true);
     try {
-      setData(await api<T>(urlRef.current));
+      const d = await api<T>(u);
+      if (urlRef.current !== u) return; // a newer request superseded this one
+      setState({ url: u, data: d });
       setError(null);
     } catch (e) {
+      if (urlRef.current !== u) return;
+      setState({ url: u, data: null });
       setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (urlRef.current === u) setLoading(false);
     }
   }, []);
 
@@ -59,7 +66,9 @@ export function useApi<T>(url: string | null) {
     reload();
   }, [url, reload]);
 
-  return { data, error, loading, reload, setData };
+  const setData = useCallback((d: T | null) => setState({ url: urlRef.current, data: d }), []);
+  const fresh = state.url === url;
+  return { data: fresh ? state.data : null, error: fresh ? error : null, loading: loading || !fresh, reload, setData };
 }
 
 export function qs(params: Record<string, string | number | undefined | null>) {

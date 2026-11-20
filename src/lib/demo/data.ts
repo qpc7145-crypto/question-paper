@@ -123,6 +123,15 @@ export const PAPERS: DemoPaper[] = [
     submittedAt: null, isLate: false, sentAt: null, usedAt: null, archivedAt: null, releasedAsModel: false,
   },
   {
+    ...blank, id: "p-stat210", status: "SUBMITTED",
+    subject: { id: "s-stat210", code: "STAT-210", title: "Probability & Statistics", semester: CURRENT_SEMESTER, examType: "MIDTERM", examDate: at(9 * DAY), submissionDeadline: at(-1 * DAY) },
+    setterId: "u-set3", typistId: "u-typ", typistCanSend: false, format: "RICH_TEXT", mode: "FREE",
+    contentHtml: "<p><strong>Q1.</strong> A fair die is rolled twice. Find the probability that the sum is 8.</p><p><strong>Q2.</strong> Define a random variable and give the mean and variance of the binomial distribution.</p>",
+    instructions: "Attempt all questions. Statistical tables will be provided.", totalMarks: 50, durationMinutes: 120,
+    centres: [{ centreId: "c-1", availableFrom: at(9 * DAY), firstAccessAt: null, firstDownloadAt: null, downloadCount: 0 }],
+    submittedAt: at(-1 * DAY - 3 * HOUR), isLate: false, sentAt: null, usedAt: null, archivedAt: null, releasedAsModel: false,
+  },
+  {
     ...blank, id: "p-phy110", status: "SUBMITTED",
     subject: { id: "s-phy110", code: "PHY-110", title: "Mechanics", semester: CURRENT_SEMESTER, examType: "FINAL", examDate: at(12 * DAY), submissionDeadline: at(-3 * DAY) },
     setterId: "u-set3", typistId: null, typistCanSend: false, format: "FILE", mode: "FREE",

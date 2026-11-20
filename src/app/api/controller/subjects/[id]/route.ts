@@ -4,7 +4,7 @@ import { audit } from "@/lib/audit";
 import { body, fail, notFound, ok, route } from "@/lib/http";
 import { requireUser } from "@/lib/auth/server";
 import { EXAM_TYPES } from "@/lib/constants";
-import { isActiveSetter as assertSetter } from "@/lib/subjects";
+import { setterAssignError } from "@/lib/subjects";
 
 type Ctx = { params: { id: string } };
 
@@ -31,7 +31,8 @@ export const PATCH = route(async (req: Request, { params }: Ctx) => {
     if (subject.paper && subject.paper.status !== "DRAFT") {
       return fail(409, "Setter cannot be changed after the paper has been submitted");
     }
-    if (input.setterId && !(await assertSetter(input.setterId))) return fail(400, "Selected setter is not an active Paper Setter");
+    const setterErr = input.setterId ? await setterAssignError(input.setterId) : null;
+    if (setterErr) return fail(409, setterErr);
   }
 
   const { setterId, ...rest } = input;

@@ -3,7 +3,7 @@ import { audit } from "@/lib/audit";
 import { body, fail, ok, route } from "@/lib/http";
 import { requireUser } from "@/lib/auth/server";
 import { listSemesters } from "@/lib/settings";
-import { isActiveSetter, subjectSchema } from "@/lib/subjects";
+import { setterAssignError, subjectSchema } from "@/lib/subjects";
 
 export const GET = route(async (req: Request) => {
   await requireUser("CONTROLLER");
@@ -23,7 +23,8 @@ export const GET = route(async (req: Request) => {
 export const POST = route(async (req: Request) => {
   const actor = await requireUser("CONTROLLER");
   const input = await body(req, subjectSchema);
-  if (input.setterId && !(await isActiveSetter(input.setterId))) return fail(400, "Selected setter is not an active Paper Setter");
+  const setterErr = input.setterId ? await setterAssignError(input.setterId) : null;
+  if (setterErr) return fail(409, setterErr);
   const dup = await prisma.subject.findUnique({
     where: { code_semester_examType: { code: input.code, semester: input.semester, examType: input.examType } },
   });

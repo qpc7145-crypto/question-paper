@@ -39,6 +39,7 @@ const createSchema = z.object({
   displayName: z.string().min(2).max(120),
   role: z.enum(["SETTER", "TYPIST", "SUPERINTENDENT"]), // FR-1
   password: z.string().max(200).optional(),
+  centreId: z.string().nullable().optional(), // FR-5: link a Superintendent to their centre at creation
 });
 
 function tempPassword() {
@@ -51,12 +52,19 @@ export const POST = route(async (req: Request) => {
   const input = await body(req, createSchema);
   const email = input.email.toLowerCase();
   if (await prisma.user.findUnique({ where: { email } })) return fail(409, "An account with this email already exists");
+  const centre = input.role === "SUPERINTENDENT" && input.centreId ? await prisma.centre.findUnique({ where: { id: input.centreId } }) : null;
+  if (input.role === "SUPERINTENDENT" && input.centreId && !centre) return fail(400, "Centre not found");
+  if (centre?.superintendentId) return fail(409, `${centre.code} already has a Superintendent. Unlink them on the Centres page first.`);
   const password = input.password || tempPassword();
   if (!PASSWORD_RULE.test(password)) return fail(400, PASSWORD_RULE.message);
   const user = await prisma.user.create({
     data: { email, displayName: input.displayName, role: input.role, passwordHash: await hashPassword(password), createdById: actor.id },
   });
-  await audit({ actor, action: "ACCOUNT_CREATED", entity: "User", entityId: user.id, details: { email, role: input.role } });
+  if (centre) {
+    await prisma.centre.update({ where: { id: centre.id }, data: { superintendentId: user.id } });
+    await audit({ actor, action: "CENTRE_UPDATED", entity: "Centre", entityId: centre.id, details: { superintendentId: user.id } });
+  }
+  await audit({ actor, action: "ACCOUNT_CREATED", entity: "User", entityId: user.id, details: { email, role: input.role, centre: centre?.code } });
   // The temporary password is shown once to the Controller and never stored in plain text.
   return ok({ user: { id: user.id, email, role: user.role }, temporaryPassword: input.password ? null : password }, 201);
 });

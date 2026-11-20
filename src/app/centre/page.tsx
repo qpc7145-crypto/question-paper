@@ -2,14 +2,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Download, Eye, Lock, Unlock } from "lucide-react";
 import { fmtDateTime, useApi } from "@/lib/client";
-import { Alert, Card, Empty, PageHeader, Pill, Spinner, StatusBadge } from "@/components/ui";
+import { Alert, Card, Empty, PageHeader, Pill, Spinner, Stat, StatusBadge } from "@/components/ui";
 import { formatRemaining, useNow } from "@/components/Countdown";
 
 type Assignment = {
   paperId: string;
   subject: { code: string; title: string; semester: string; examType: string };
   availableFrom: string; durationMinutes: number | null; totalMarks: number | null;
-  unlocked: boolean; downloadCount: number; firstDownloadAt: string | null; status: string;
+  unlocked: boolean; downloadCount: number; firstAccessAt?: string | null; firstDownloadAt: string | null; status: string;
 };
 type Data = { centre: { code: string; name: string; city: string }; serverNow: string; papers: Assignment[] };
 
@@ -44,6 +44,12 @@ export default function CentreDashboard() {
         }
       />
       {error && <Alert>{error}</Alert>}
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Scheduled" value={papers.length} />
+        <Stat label="Upcoming" value={upcoming.length} hint={upcoming[0] ? `Next: ${upcoming[0].subject.code}, ${fmtDateTime(upcoming[0].availableFrom)}` : undefined} />
+        <Stat label="Available now" value={open.filter((p) => p.status !== "USED").length} tone={open.some((p) => p.status !== "USED") ? "amber" : undefined} />
+        <Stat label="Used" value={papers.filter((p) => p.status === "USED").length} />
+      </div>
       <div className="mb-4">
         <Alert tone="info">Papers unlock automatically at the scheduled exam time (server clock). Every access and download is logged with time and centre identity.</Alert>
       </div>
@@ -81,7 +87,7 @@ function PaperCard({ p, now, onOpen }: { p: Assignment; now: number; onOpen: () 
           <p className="text-sm text-muted">{p.subject.title}</p>
           <p className="mt-1 text-xs text-muted">{p.subject.examType} · {p.subject.semester}{p.durationMinutes ? ` · ${p.durationMinutes} min` : ""}{p.totalMarks ? ` · ${p.totalMarks} marks` : ""}</p>
         </div>
-        {p.downloadCount > 0 ? <StatusBadge status="USED" /> : locked ? <Pill><Lock className="h-3 w-3" /> Locked</Pill> : <Pill tone="green"><Unlock className="h-3 w-3" /> Unlocked</Pill>}
+        {p.status === "USED" || p.downloadCount > 0 || p.firstAccessAt ? <StatusBadge status="USED" /> : locked ? <Pill><Lock className="h-3 w-3" /> Locked</Pill> : <Pill tone="green"><Unlock className="h-3 w-3" /> Unlocked</Pill>}
       </div>
       <div className="mt-4 rounded-md bg-[#F8FAFC] px-4 py-3">
         <p className="text-xs text-muted">Scheduled exam time</p>
@@ -91,6 +97,7 @@ function PaperCard({ p, now, onOpen }: { p: Assignment; now: number; onOpen: () 
             {formatRemaining(remaining)}
           </p>
         )}
+        {p.firstAccessAt && !p.firstDownloadAt && <p className="mt-1 text-xs text-muted">First opened {fmtDateTime(p.firstAccessAt)}</p>}
         {p.firstDownloadAt && <p className="mt-1 text-xs text-muted">First downloaded {fmtDateTime(p.firstDownloadAt)} · {p.downloadCount} download(s)</p>}
       </div>
       <div className="mt-4 flex flex-wrap gap-2">

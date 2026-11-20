@@ -5,6 +5,8 @@ import { Archive, ArrowLeft, BookOpen, Check, Loader2, Lock, RotateCcw, Send } f
 import { api, fmtDateTime, toLocalInput, useApi } from "@/lib/client";
 import { Alert, Card, PageHeader, Pill, Spinner, StatusBadge } from "@/components/ui";
 import { PaperWorkspace, type PaperContent } from "@/components/PaperWorkspace";
+import { confirmAction } from "@/components/ConfirmDialog";
+import { UNLOCK_LEAD_MINUTES, unlockTimeError } from "@/lib/semesters";
 
 type CentreAssign = { centreId: string; code: string; name: string; city: string; availableFrom: string; firstAccessAt: string | null; firstDownloadAt: string | null; downloadCount: number };
 type Paper = PaperContent & {
@@ -32,7 +34,7 @@ export default function ControllerPaperPage({ params }: { params: { id: string }
   const dirty = useRef(false);
 
   async function act(action: string, extra: Record<string, unknown> = {}, confirmText?: string) {
-    if (confirmText && !window.confirm(confirmText)) return;
+    if (confirmText && !(await confirmAction(confirmText, { danger: action === "archive", confirmLabel: action === "archive" ? "Archive & lock" : action === "send" ? "Send" : action === "recall" ? "Recall" : "Confirm" }))) return;
     if (action === "send" && dirty.current) return setMsg({ tone: "error", text: "Save your edits before sending." });
     setBusy(action);
     setMsg(null);
@@ -202,6 +204,21 @@ function CentresPanel({ paper, centres, disabled, onSave }: { paper: Paper; cent
   const [sel, setSel] = useState<Record<string, string>>(initial);
   useEffect(() => setSel(initial()), [paper.centres]); // eslint-disable-line react-hooks/exhaustive-deps
   const fixed = new Set(paper.centres.filter((c) => c.downloadCount > 0).map((c) => c.centreId));
+  const [err, setErr] = useState<string | null>(null);
+  const exam = new Date(paper.subject.examDate);
+  const earliest = toLocalInput(new Date(Math.max(Date.now(), exam.getTime() - UNLOCK_LEAD_MINUTES * 60_000)));
+
+  function save() {
+    // Same rule the server enforces (FR-18): only new or changed times are checked.
+    for (const [centreId, v] of Object.entries(sel)) {
+      const prev = paper.centres.find((c) => c.centreId === centreId);
+      if (prev && toLocalInput(prev.availableFrom) === v) continue;
+      const e = unlockTimeError(new Date(v), exam, centres.find((c) => c.id === centreId)?.code ?? "this centre");
+      if (e) return setErr(e);
+    }
+    setErr(null);
+    onSave(Object.entries(sel).map(([centreId, v]) => ({ centreId, availableFrom: new Date(v).toISOString() })));
+  }
 
   return (
     <Card title="Examination centres">
@@ -233,6 +250,7 @@ function CentresPanel({ paper, centres, disabled, onSave }: { paper: Paper; cent
                   aria-label={`Unlock time for ${c.code}`}
                   className="input mt-1.5 text-xs"
                   value={sel[c.id]}
+                  min={fixed.has(c.id) ? undefined : earliest}
                   disabled={disabled || fixed.has(c.id)}
                   onChange={(e) => setSel((s) => ({ ...s, [c.id]: e.target.value }))}
                 />
@@ -241,11 +259,12 @@ function CentresPanel({ paper, centres, disabled, onSave }: { paper: Paper; cent
           );
         })}
       </ul>
-      <p className="mt-3 text-xs text-muted">Each centre can download only from its unlock time (defaults to the exam date/time).</p>
+      <p className="mt-3 text-xs text-muted">Each centre can download only from its unlock time. It defaults to the exam start and can be at most {UNLOCK_LEAD_MINUTES} minutes earlier.</p>
+      {err && <p className="mt-2 text-xs text-red-700" role="alert">{err}</p>}
       <button
         className="btn-secondary btn-sm mt-3"
         disabled={disabled}
-        onClick={() => onSave(Object.entries(sel).map(([centreId, v]) => ({ centreId, availableFrom: new Date(v).toISOString() })))}
+        onClick={save}
       >
         Save centres
       </button>

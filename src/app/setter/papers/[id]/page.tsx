@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Send } from "lucide-react";
 import { api, fmtDateTime, useApi } from "@/lib/client";
 import { Alert, PageHeader, Pill, Spinner, StatusBadge } from "@/components/ui";
 import { PaperWorkspace, type PaperContent } from "@/components/PaperWorkspace";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 type SetterPaper = PaperContent & {
   id: string; editable: boolean; isLate: boolean; submittedAt: string | null;
@@ -20,7 +21,7 @@ export default function SetterPaperPage({ params }: { params: { id: string } }) 
 
   async function submit() {
     if (dirty.current) return setMsg("Save your draft before submitting.");
-    if (!confirmSubmit()) return;
+    if (!(await confirmAction("Submit this paper as final? You will not be able to edit it afterwards.", { title: "Submit final paper", confirmLabel: "Submit" }))) return;
     setBusy(true);
     setMsg(null);
     try {
@@ -60,7 +61,7 @@ export default function SetterPaperPage({ params }: { params: { id: string } }) 
         uploadUrl={`/api/papers/${p.id}/file`}
         previewUrl={`/api/papers/${p.id}/preview`}
         dirtyRef={dirty}
-        onSaved={(paper) => setData({ paper: paper as SetterPaper })}
+        onSaved={(paper) => { setMsg(null); setData({ paper: paper as SetterPaper }); }}
         actions={
           p.editable && (
             <button className="btn-primary" onClick={submit} disabled={busy}>
@@ -71,9 +72,4 @@ export default function SetterPaperPage({ params }: { params: { id: string } }) 
       />
     </>
   );
-}
-
-function confirmSubmit() {
-  // window.confirm is a native dialog; acceptable for a deliberate, irreversible submit.
-  return window.confirm("Submit this paper as final? You will not be able to edit it afterwards.");
 }

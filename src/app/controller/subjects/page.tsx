@@ -5,6 +5,8 @@ import { Loader2, Plus } from "lucide-react";
 import { api, fmtDateTime, qs, useApi } from "@/lib/client";
 import { EXAM_TYPES } from "@/lib/constants";
 import { Alert, Card, Empty, Field, PageHeader, SemesterFilter, Spinner, StatusBadge, Table } from "@/components/ui";
+import { confirmAction } from "@/components/ConfirmDialog";
+import { SEMESTER_HINT, SEMESTER_PATTERN } from "@/lib/semesters";
 
 type Subject = {
   id: string; code: string; title: string; semester: string; examType: string; examDate: string; submissionDeadline: string;
@@ -26,6 +28,9 @@ export default function SubjectsPage() {
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    if (new Date(form.submissionDeadline) >= new Date(form.examDate)) {
+      return setMsg({ tone: "error", text: "Submission deadline must be before the exam date" });
+    }
     setBusy(true);
     setMsg(null);
     try {
@@ -45,7 +50,7 @@ export default function SubjectsPage() {
   }
 
   async function assign(s: Subject, setterId: string) {
-    if (s.setter && !window.confirm("Re-assigning will discard the current setter's draft for this subject. Continue?")) return reload();
+    if (s.setter && !(await confirmAction("Re-assigning will discard the current setter's draft for this subject. Continue?", { confirmLabel: "Re-assign" }))) return reload();
     try {
       await api(`/api/controller/subjects/${s.id}`, { method: "PATCH", json: { setterId: setterId || null } });
       setMsg({ tone: "success", text: `Setter updated for ${s.code}` });
@@ -77,17 +82,17 @@ export default function SubjectsPage() {
           <form onSubmit={create} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Subject code"><input className="input uppercase" required placeholder="CS-301" value={form.code} onChange={set("code")} /></Field>
             <Field label="Title" className="lg:col-span-2"><input className="input" required value={form.title} onChange={set("title")} /></Field>
-            <Field label="Semester" hint="e.g. Fall 2026"><input className="input" required list="semesters" value={form.semester} onChange={set("semester")} /></Field>
+            <Field label="Semester" hint={SEMESTER_HINT}><input className="input" required list="semesters" pattern={SEMESTER_PATTERN} title={SEMESTER_HINT} placeholder="Fall 2026" value={form.semester} onChange={set("semester")} /></Field>
             <datalist id="semesters">{(data?.semesters ?? []).map((s) => <option key={s} value={s} />)}</datalist>
             <Field label="Exam type">
               <select className="input" value={form.examType} onChange={set("examType")}>{EXAM_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
             </Field>
             <Field label="Exam date & time"><input className="input" type="datetime-local" required value={form.examDate} onChange={set("examDate")} /></Field>
-            <Field label="Submission deadline"><input className="input" type="datetime-local" required value={form.submissionDeadline} onChange={set("submissionDeadline")} /></Field>
+            <Field label="Submission deadline"><input className="input" type="datetime-local" required max={form.examDate || undefined} value={form.submissionDeadline} onChange={set("submissionDeadline")} /></Field>
             <Field label="Paper setter (optional)">
               <select className="input" value={form.setterId} onChange={set("setterId")}>
                 <option value="">— Assign later —</option>
-                {activeSetters.map((s) => <option key={s.id} value={s.id}>{s.displayName}{s.bioDataComplete ? "" : " (bio-data pending)"}</option>)}
+                {activeSetters.map((s) => <option key={s.id} value={s.id} disabled={!s.bioDataComplete}>{s.displayName}{s.bioDataComplete ? "" : " (bio-data pending, can't be assigned)"}</option>)}
               </select>
             </Field>
             <div className="flex gap-2 sm:col-span-2 lg:col-span-4">
@@ -111,15 +116,15 @@ export default function SubjectsPage() {
                   <tr key={s.id}>
                     <td className="td"><p className="font-medium">{s.code}</p><p className="text-muted">{s.title}</p></td>
                     <td className="td">{s.semester}<p className="text-xs text-muted">{s.examType}</p></td>
-                    <td className="td whitespace-nowrap">{fmtDateTime(s.submissionDeadline)}</td>
-                    <td className="td whitespace-nowrap">{fmtDateTime(s.examDate)}</td>
-                    <td className="td min-w-[12rem]">
+                    <td className="td">{fmtDateTime(s.submissionDeadline)}</td>
+                    <td className="td">{fmtDateTime(s.examDate)}</td>
+                    <td className="td min-w-[10rem]">
                       {lockedSetter ? (
                         <span>{s.setter?.displayName}</span>
                       ) : (
                         <select className="input" value={s.setter?.id ?? ""} onChange={(e) => assign(s, e.target.value)} aria-label={`Setter for ${s.code}`}>
                           <option value="">— Unassigned —</option>
-                          {activeSetters.map((x) => <option key={x.id} value={x.id}>{x.displayName}</option>)}
+                          {activeSetters.map((x) => <option key={x.id} value={x.id} disabled={!x.bioDataComplete}>{x.displayName}{x.bioDataComplete ? "" : " (bio-data pending)"}</option>)}
                         </select>
                       )}
                     </td>

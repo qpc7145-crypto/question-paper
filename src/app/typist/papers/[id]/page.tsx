@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Send } from "lucide-react";
 import { api, fmtDateTime, useApi } from "@/lib/client";
 import { Alert, Card, PageHeader, Spinner, StatusBadge } from "@/components/ui";
 import { PaperWorkspace, type PaperContent } from "@/components/PaperWorkspace";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 type TypistPaper = PaperContent & {
   id: string; editable: boolean; canSend: boolean; revisionCount: number; sentAt: string | null;
@@ -21,7 +22,7 @@ export default function TypistPaperPage({ params }: { params: { id: string } }) 
 
   async function send() {
     if (dirty.current) return setMsg({ tone: "error", text: "Save your changes before sending." });
-    if (!window.confirm("Send this paper to all assigned centres? It will unlock for each centre at its scheduled time.")) return;
+    if (!(await confirmAction("Send this paper to all assigned centres? It will unlock for each centre at its scheduled time.", { confirmLabel: "Send" }))) return;
     setBusy(true);
     setMsg(null);
     try {

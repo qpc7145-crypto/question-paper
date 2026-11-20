@@ -4,7 +4,7 @@ import { FileSpreadsheet, FileText, ShieldCheck, ShieldX } from "lucide-react";
 import { api, fmtDateTime, qs, useApi } from "@/lib/client";
 import { Alert, Card, Empty, Field, PageHeader, Spinner, Table } from "@/components/ui";
 
-type Log = { seq: number; at: string; userEmail: string | null; role: string | null; action: string; entity: string | null; entityId: string | null; details: string; ip: string | null; hash: string };
+type Log = { seq: number; at: string; userEmail: string | null; role: string | null; action: string; entity: string | null; entityId: string | null; entityLabel?: string | null; details: string; ip: string | null; hash: string };
 type Data = { total: number; page: number; pageSize: number; rows: Log[]; actions: string[] };
 const EMPTY = { email: "", role: "", action: "", from: "", to: "" };
 
@@ -60,8 +60,8 @@ export default function AuditPage() {
               {(data?.actions ?? []).map((a) => <option key={a}>{a}</option>)}
             </select>
           </Field>
-          <Field label="From"><input className="input" type="date" value={draft.from} onChange={set("from")} /></Field>
-          <Field label="To"><input className="input" type="date" value={draft.to} onChange={set("to")} /></Field>
+          <Field label="From"><input className="input" type="date" value={draft.from} max={draft.to || undefined} onChange={set("from")} /></Field>
+          <Field label="To"><input className="input" type="date" value={draft.to} min={draft.from || undefined} onChange={set("to")} /></Field>
           <div className="flex items-end gap-2">
             <button className="btn-primary flex-1">Filter</button>
             <button type="button" className="btn-secondary" onClick={() => { setDraft(EMPTY); setFilters(EMPTY); setPage(1); }}>Reset</button>
@@ -82,7 +82,7 @@ export default function AuditPage() {
                       <td className="td whitespace-nowrap">{fmtDateTime(l.at)}</td>
                       <td className="td"><span className={`font-mono text-xs font-medium ${/FAILED/.test(l.action) ? "text-red-600" : ""}`}>{l.action}</span></td>
                       <td className="td">{l.userEmail ?? <span className="text-muted">system / anonymous</span>}<p className="text-xs text-muted">{l.role}</p></td>
-                      <td className="td text-xs">{l.entity}<p className="font-mono text-muted">{l.entityId?.slice(0, 12)}</p></td>
+                      <td className="td text-xs">{l.entity}{l.entityLabel ? <p className="font-medium">{l.entityLabel}</p> : l.entityId && <p className="font-mono text-muted">{l.entityId.slice(0, 12)}</p>}</td>
                       <td className="td font-mono text-xs">{l.ip ?? "—"}</td>
                     </tr>
                     {open === l.seq && (

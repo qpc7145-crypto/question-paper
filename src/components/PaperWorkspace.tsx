@@ -50,7 +50,11 @@ export function PaperWorkspace<P>({ paper, editable, saveUrl, uploadUrl, preview
   const [msg, setMsg] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const touch = () => setDirty(true);
+  // Editing again makes an earlier "Saved" message stale, so clear it.
+  const touch = () => {
+    setDirty(true);
+    setMsg((m) => (m?.tone === "success" ? null : m));
+  };
   useEffect(() => {
     if (dirtyRef) dirtyRef.current = dirty;
     if (!dirty) return;

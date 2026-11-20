@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { compareSemesters } from "@/lib/semesters";
 
 export const SETTING_KEYS = {
   currentSemester: "currentSemester",
@@ -22,15 +23,4 @@ export async function listSemesters(): Promise<string[]> {
   return rows.map((r) => r.semester).sort(compareSemesters);
 }
 
-// Sort "Spring 2026" / "Fall 2026" style labels newest first; unknown formats alphabetically.
-export function compareSemesters(a: string, b: string) {
-  const parse = (s: string) => {
-    const m = s.match(/(spring|summer|fall|winter)\s*(\d{4})/i);
-    if (!m) return null;
-    const order = { spring: 1, summer: 2, fall: 3, winter: 4 } as Record<string, number>;
-    return Number(m[2]) * 10 + order[m[1].toLowerCase()];
-  };
-  const pa = parse(a), pb = parse(b);
-  if (pa !== null && pb !== null) return pb - pa;
-  return a.localeCompare(b);
-}
+export { compareSemesters };

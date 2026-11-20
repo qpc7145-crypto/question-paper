@@ -66,7 +66,7 @@ function DemoRoles() {
   return (
     <div className="border-t border-line pt-4">
       <p className="text-sm font-medium">Design preview</p>
-      <p className="mb-3 text-xs text-muted">No backend is connected. Pick a role to explore with sample data. Changes reset when you reload.</p>
+      <p className="mb-3 text-xs text-muted">No backend is connected. Pick a role to explore with sample data. Your changes are kept in this browser, so you can follow a paper from one role to the next.</p>
       <div className="grid grid-cols-2 gap-2">
         {DEMO_ROLES.map((r) => (
           <a key={r.role} href={`/api/demo/login?role=${r.role}`} className="btn-secondary flex-col items-start gap-0 text-left">
@@ -74,6 +74,20 @@ function DemoRoles() {
             <span className="text-xs font-normal text-muted">{r.hint}</span>
           </a>
         ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <a href="/api/demo/login?role=SETTER&user=u-set2" className="text-[#1D4ED8] hover:underline">Setter with bio-data pending</a>
+        <button
+          type="button"
+          className="text-muted underline hover:text-ink"
+          onClick={async () => {
+            const { resetDemoData } = await import("@/lib/demo/api");
+            resetDemoData();
+            window.location.reload();
+          }}
+        >
+          Reset sample data
+        </button>
       </div>
     </div>
   );

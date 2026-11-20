@@ -34,14 +34,14 @@ export default function ReportsPage() {
       </div>
       {error && <Alert>{error}</Alert>}
       {loading ? <Spinner /> : tab === "setters" ? (
-        <Card title="Setter performance (FR-23)" actions={<div className="flex gap-2">{exportLinks}</div>} bodyClass="p-0">
-          {(data?.rows as SetterRow[]).length === 0 ? <Empty title="No setters" /> : (
+        <Card title="Setter performance" actions={<div className="flex gap-2">{exportLinks}</div>} bodyClass="p-0">
+          {((data?.rows ?? []) as SetterRow[]).length === 0 ? <Empty title="No setters" /> : (
             <Table>
               <thead className="bg-[#F8FAFC]">
                 <tr><th className="th">Setter</th><th className="th text-right">Assigned</th><th className="th text-right">Papers set</th><th className="th text-right">Late</th><th className="th text-right">Overdue drafts</th><th className="th text-right">Revisions</th><th className="th text-right">On-time</th></tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {(data!.rows as SetterRow[]).map((r) => (
+                {((data?.rows ?? []) as SetterRow[]).map((r) => (
                   <tr key={r.setterId}>
                     <td className="td"><p className="font-medium">{r.name}</p><p className="text-xs text-muted">{r.institution || r.email}</p></td>
                     <td className="td text-right tabular-nums">{r.assigned}</td>
@@ -59,9 +59,9 @@ export default function ReportsPage() {
       ) : (
         <div className="space-y-4">
           <div className="flex justify-end gap-2">{exportLinks}</div>
-          {(data?.rows as CentreRow[]).map((c) => (
+          {((data?.rows ?? []) as CentreRow[]).map((c) => (
             <Card key={c.centreId} title={`${c.code} — ${c.name}`} actions={<span className="text-xs text-muted">{c.downloadedPapers}/{c.assignedPapers} papers downloaded · {c.totalDownloads} downloads</span>} bodyClass="p-0">
-              {c.rows.length === 0 ? <Empty title="No papers assigned in this period" /> : (
+              {(c.rows ?? []).length === 0 ? <Empty title="No papers assigned in this period" /> : (
                 <Table>
                   <thead className="bg-[#F8FAFC]"><tr><th className="th">Paper</th><th className="th">Scheduled</th><th className="th">First access</th><th className="th">First download</th><th className="th text-right">Downloads</th></tr></thead>
                   <tbody className="divide-y divide-line">

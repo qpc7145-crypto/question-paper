@@ -4,6 +4,7 @@ import { Copy, Loader2, Plus, UserCheck, UserX } from "lucide-react";
 import { api, fmtDateTime, useApi } from "@/lib/client";
 import { ROLE_LABEL, type Role } from "@/lib/constants";
 import { Alert, Card, Empty, Field, PageHeader, Pill, Spinner, Table } from "@/components/ui";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 type User = {
   id: string; email: string; role: Role; displayName: string; isActive: boolean; locked: boolean; lastLoginAt: string | null;
@@ -14,7 +15,10 @@ type Detail = { user: Record<string, unknown> & { setterProfile: Record<string, 
 export default function UsersPage() {
   const [role, setRole] = useState("");
   const { data, error, loading, reload } = useApi<{ users: User[] }>(`/api/controller/users${role ? `?role=${role}` : ""}`);
-  const [form, setForm] = useState({ email: "", displayName: "", role: "SETTER" });
+  const [form, setForm] = useState({ email: "", displayName: "", role: "SETTER", centreId: "" });
+  const centres = useApi<{ centres: { id: string; code: string; name: string; superintendent: { id: string } | null }[] }>("/api/controller/centres");
+  const freeCentres = (centres.data?.centres ?? []).filter((c) => !c.superintendent);
+  const [editBio, setEditBio] = useState(false);
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "error" | "success"; text: React.ReactNode } | null>(null);
@@ -25,7 +29,7 @@ export default function UsersPage() {
     setBusy(true);
     setMsg(null);
     try {
-      const r = await api<{ temporaryPassword: string | null }>("/api/controller/users", { method: "POST", json: form });
+      const r = await api<{ temporaryPassword: string | null }>("/api/controller/users", { method: "POST", json: { ...form, centreId: form.role === "SUPERINTENDENT" && form.centreId ? form.centreId : null } });
       setMsg({
         tone: "success",
         text: (
@@ -36,9 +40,10 @@ export default function UsersPage() {
           </span>
         ),
       });
-      setForm({ email: "", displayName: "", role: form.role });
+      setForm({ email: "", displayName: "", role: form.role, centreId: "" });
       setShow(false);
       reload();
+      centres.reload();
     } catch (err) {
       setMsg({ tone: "error", text: (err as Error).message });
     } finally {
@@ -57,6 +62,7 @@ export default function UsersPage() {
 
   async function view(u: User) {
     const r = await api<Detail>(`/api/controller/users/${u.id}`);
+    setEditBio(false);
     setDetail(r.user);
   }
 
@@ -64,7 +70,7 @@ export default function UsersPage() {
     <>
       <PageHeader
         title="Accounts"
-        description="Create and manage Paper Setter, Typist and Centre Superintendent accounts (FR-1)."
+        description="Create and manage Paper Setter, Typist and Centre Superintendent accounts."
         actions={
           <>
             <select className="input w-auto" value={role} onChange={(e) => setRole(e.target.value)} aria-label="Filter by role">
@@ -91,6 +97,14 @@ export default function UsersPage() {
             </Field>
             <Field label="Display name"><input className="input" required value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} /></Field>
             <Field label="Email" className="sm:col-span-2"><input className="input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+            {form.role === "SUPERINTENDENT" && (
+              <Field label="Examination centre" hint="Centres that already have a Superintendent are not listed" className="sm:col-span-2">
+                <select className="input" value={form.centreId} onChange={(e) => setForm({ ...form, centreId: e.target.value })}>
+                  <option value="">— Link later on the Centres page —</option>
+                  {freeCentres.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
+                </select>
+              </Field>
+            )}
             <div className="sm:col-span-4">
               <p className="mb-3 text-xs text-muted">A strong temporary password is generated and shown once. The user can change it, or reset via email OTP.</p>
               <button className="btn-primary" disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} Create account</button>
@@ -118,7 +132,7 @@ export default function UsersPage() {
                     <td className="td whitespace-nowrap text-right">
                       {u.locked && <button className="btn-secondary btn-sm mr-2" onClick={() => patch(u, { unlock: true })}>Unlock</button>}
                       {u.isActive ? (
-                        <button className="btn-secondary btn-sm" onClick={() => window.confirm(`Deactivate ${u.email}? They will be signed out immediately.`) && patch(u, { isActive: false })}><UserX className="h-3.5 w-3.5" /> Deactivate</button>
+                        <button className="btn-secondary btn-sm" onClick={async () => (await confirmAction(`Deactivate ${u.email}? They will be signed out immediately.`, { danger: true, confirmLabel: "Deactivate" })) && patch(u, { isActive: false })}><UserX className="h-3.5 w-3.5" /> Deactivate</button>
                       ) : (
                         <button className="btn-secondary btn-sm" onClick={() => patch(u, { isActive: true })}><UserCheck className="h-3.5 w-3.5" /> Activate</button>
                       )}
@@ -130,17 +144,77 @@ export default function UsersPage() {
           )}
         </Card>
         <Card title="Bio-data" actions={detail && <button className="text-xs text-muted hover:text-ink" onClick={() => setDetail(null)}>Close</button>}>
-          {!detail ? <p className="text-sm text-muted">Select a user to view their bio-data.</p> : (
+          {!detail ? <p className="text-sm text-muted">Select a user to view their bio-data.</p> : detail.role === "SUPERINTENDENT" && editBio ? (
+            <SuperintendentBioForm
+              userId={String(detail.id)}
+              initial={detail.superintendent}
+              onCancel={() => setEditBio(false)}
+              onSaved={async () => { setEditBio(false); await view({ id: String(detail.id) } as User); reload(); }}
+            />
+          ) : (
             <dl className="space-y-2 text-sm">
               <div><dt className="text-muted">Email</dt><dd>{String(detail.email)}</dd></div>
               {Object.entries(detail.setterProfile ?? detail.superintendent ?? {}).filter(([k]) => !["userId", "updatedAt", "completedAt"].includes(k)).map(([k, v]) => (
                 <div key={k}><dt className="capitalize text-muted">{k.replace(/([A-Z])/g, " $1").toLowerCase()}</dt><dd className="break-words">{String(v)}</dd></div>
               ))}
               {!detail.setterProfile && !detail.superintendent && <p className="text-muted">No bio-data on file.</p>}
+              {detail.role === "SUPERINTENDENT" && (
+                <button className="btn-secondary btn-sm mt-2" onClick={() => setEditBio(true)}>{detail.superintendent ? "Edit bio-data" : "Enter bio-data"}</button>
+              )}
             </dl>
           )}
         </Card>
       </div>
     </>
+  );
+}
+
+const SUP_FIELDS: [key: string, label: string, hint?: string][] = [
+  ["fullName", "Full name"],
+  ["cnic", "CNIC", "12345-1234567-1"],
+  ["designation", "Designation"],
+  ["organization", "Organization"],
+  ["phone", "Phone"],
+  ["address", "Address"],
+];
+
+// FR-5: the Controller can enter a Superintendent's bio-data on their behalf.
+function SuperintendentBioForm({ userId, initial, onSaved, onCancel }: { userId: string; initial: Record<string, unknown> | null; onSaved: () => void; onCancel: () => void }) {
+  const [f, setF] = useState<Record<string, string>>(() => Object.fromEntries(SUP_FIELDS.map(([k]) => [k, String(initial?.[k] ?? "")])));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      await api(`/api/controller/users/${userId}/superintendent`, { method: "PUT", json: f });
+      onSaved();
+    } catch (x) {
+      setErr((x as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      {err && <Alert>{err}</Alert>}
+      {SUP_FIELDS.map(([k, label, hint]) => (
+        <Field key={k} label={label} hint={hint}>
+          <input
+            className="input"
+            required
+            value={f[k]}
+            placeholder={hint}
+            pattern={k === "cnic" ? "[0-9]{5}-[0-9]{7}-[0-9]" : undefined}
+            onChange={(e) => setF({ ...f, [k]: e.target.value })}
+          />
+        </Field>
+      ))}
+      <div className="flex gap-2">
+        <button className="btn-primary btn-sm" disabled={busy}>{busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Save bio-data</button>
+        <button type="button" className="btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
   );
 }

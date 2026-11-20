@@ -1,18 +1,10 @@
-import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { body, ok, route } from "@/lib/http";
 import { requireUser } from "@/lib/auth/server";
+import { superintendentSchema as schema } from "@/lib/superintendent";
 
 // FR-5: Centre Superintendent bio-data maintained via system entry form.
-const schema = z.object({
-  fullName: z.string().min(3).max(120),
-  cnic: z.string().regex(/^\d{5}-\d{7}-\d$/, "CNIC must be in the format 12345-1234567-1"),
-  designation: z.string().min(2).max(120),
-  organization: z.string().min(2).max(200),
-  phone: z.string().regex(/^[+\d][\d\s-]{6,19}$/, "Enter a valid phone number"),
-  address: z.string().min(5).max(500),
-});
 
 export const GET = route(async () => {
   const u = await requireUser("SUPERINTENDENT");

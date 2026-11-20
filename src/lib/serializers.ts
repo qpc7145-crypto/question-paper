@@ -114,6 +114,7 @@ export function centreAssignmentView(
     totalMarks: a.paper.totalMarks,
     unlocked: now >= a.availableFrom,
     downloadCount: a.downloadCount,
+    firstAccessAt: a.firstAccessAt,
     firstDownloadAt: a.firstDownloadAt,
     status: a.paper.status === "USED" ? "USED" : "SENT_TO_CENTRE",
   };
