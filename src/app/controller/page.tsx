@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AlertTriangle, CalendarClock, ScrollText } from "lucide-react";
+import { AlertTriangle, CalendarClock } from "lucide-react";
 import { fmtDateTime, qs, useApi } from "@/lib/client";
 import { PAPER_STATUSES, ROLE_LABEL, type Role } from "@/lib/constants";
 import { Alert, Card, Empty, PageHeader, SemesterFilter, Spinner, Stat, StatusBadge } from "@/components/ui";
@@ -12,7 +12,6 @@ type Data = {
   upcoming: { paperId: string; code: string; title: string; status: string; centre: string; availableFrom: string }[];
   users: Record<string, number>;
   centres: number;
-  recent: { seq: number; at: string; action: string; userEmail: string | null; role: string | null }[];
   semesters: string[];
   currentSemester: string;
 };
@@ -53,7 +52,7 @@ export default function ControllerDashboard() {
             {(["SETTER", "TYPIST", "SUPERINTENDENT"] as Role[]).map((r) => <Stat key={r} label={ROLE_LABEL[r] + "s"} value={data.users[r] ?? 0} hint="active accounts" />)}
             <Stat label="Examination centres" value={data.centres} />
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6">
             <Card title={<span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Upcoming centre unlocks</span>} bodyClass="p-0">
               {data.upcoming.length === 0 ? (
                 <Empty title="No upcoming exams" />
@@ -70,16 +69,6 @@ export default function ControllerDashboard() {
                   ))}
                 </ul>
               )}
-            </Card>
-            <Card title={<span className="inline-flex items-center gap-2"><ScrollText className="h-4 w-4" /> Recent activity</span>} bodyClass="p-0">
-              <ul className="divide-y divide-line">
-                {data.recent.map((r) => (
-                  <li key={r.seq} className="px-5 py-2.5 text-sm">
-                    <span className="font-mono text-xs text-muted">{fmtDateTime(r.at)}</span>
-                    <p><span className="font-medium">{r.action.replace(/_/g, " ").toLowerCase()}</span> <span className="text-muted">· {r.userEmail ?? "system"}</span></p>
-                  </li>
-                ))}
-              </ul>
             </Card>
           </div>
         </div>

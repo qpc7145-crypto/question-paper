@@ -8,7 +8,7 @@ export const GET = route(async (req: Request) => {
   await requireUser("CONTROLLER");
   const semester = new URL(req.url).searchParams.get("semester") || undefined;
   const now = new Date();
-  const [byStatus, overdue, upcoming, users, centres, recent] = await Promise.all([
+  const [byStatus, overdue, upcoming, users, centres] = await Promise.all([
     prisma.paper.groupBy({ by: ["status"], where: { subject: { semester } }, _count: true }),
     prisma.paper.count({ where: { status: "DRAFT", subject: { semester, submissionDeadline: { lt: now } } } }),
     prisma.paperCentre.findMany({
@@ -19,7 +19,6 @@ export const GET = route(async (req: Request) => {
     }),
     prisma.user.groupBy({ by: ["role"], where: { isActive: true }, _count: true }),
     prisma.centre.count(),
-    prisma.auditLog.findMany({ orderBy: { seq: "desc" }, take: 8, select: { seq: true, at: true, action: true, userEmail: true, role: true } }),
   ]);
   const counts = Object.fromEntries(PAPER_STATUSES.map((s) => [s, 0])) as Record<string, number>;
   byStatus.forEach((r) => (counts[r.status] = r._count));
@@ -36,7 +35,6 @@ export const GET = route(async (req: Request) => {
     })),
     users: Object.fromEntries(users.map((u) => [u.role, u._count])),
     centres,
-    recent,
     semesters: await listSemesters(),
     currentSemester: await getCurrentSemester(),
   });

@@ -365,7 +365,7 @@ const routes: [string, RegExp, Who, Handler][] = [
     }))).sort((a, b) => a.availableFrom.localeCompare(b.availableFrom));
     return {
       counts, overdue: rows.filter((p) => p.status === "DRAFT" && new Date(p.subject.submissionDeadline) < new Date()).length,
-      upcoming, users, centres: CENTRES.length, recent: AUDIT.slice(0, 8), semesters: semesters(), currentSemester,
+      upcoming, users, centres: CENTRES.length, semesters: semesters(), currentSemester,
     };
   }],
   ["GET", /^\/api\/controller\/papers$/, "CONTROLLER", (_m, q) => ({
