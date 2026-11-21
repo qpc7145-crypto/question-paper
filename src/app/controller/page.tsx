@@ -71,7 +71,7 @@ export default function ControllerDashboard() {
                 </ul>
               )}
             </Card>
-            <Card title={<span className="inline-flex items-center gap-2"><ScrollText className="h-4 w-4" /> Recent activity</span>} actions={<Link href="/controller/audit" className="text-xs font-medium text-[#1D4ED8] hover:underline">Full audit log</Link>} bodyClass="p-0">
+            <Card title={<span className="inline-flex items-center gap-2"><ScrollText className="h-4 w-4" /> Recent activity</span>} bodyClass="p-0">
               <ul className="divide-y divide-line">
                 {data.recent.map((r) => (
                   <li key={r.seq} className="px-5 py-2.5 text-sm">

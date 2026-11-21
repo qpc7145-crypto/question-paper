@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3, BookOpen, Building2, FileText, FolderOpen, GraduationCap, KeyRound, LayoutDashboard, LogOut,
-  Menu, ScrollText, Settings, ShieldCheck, UserCircle, Users, X,
+  Menu, Settings, ShieldCheck, UserCircle, Users, X,
 } from "lucide-react";
 import { ROLE_LABEL, type Role } from "@/lib/constants";
 
@@ -19,7 +19,6 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/controller/centres", label: "Centres", icon: Building2 },
     { href: "/controller/resources", label: "Syllabus & Models", icon: FolderOpen },
     { href: "/controller/reports", label: "Reports", icon: BarChart3 },
-    { href: "/controller/audit", label: "Audit Log", icon: ScrollText },
     { href: "/controller/settings", label: "Settings", icon: Settings },
   ],
   SETTER: [

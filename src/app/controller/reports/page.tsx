@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useState } from "react";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { fmtDateTime, qs, useApi } from "@/lib/client";
@@ -30,7 +29,6 @@ export default function ReportsPage() {
       <div className="mb-4 flex gap-6 border-b border-line" role="tablist">
         <button role="tab" aria-selected={tab === "setters"} className={tabCls(tab === "setters")} onClick={() => setTab("setters")}>Setter performance</button>
         <button role="tab" aria-selected={tab === "centres"} className={tabCls(tab === "centres")} onClick={() => setTab("centres")}>Centre usage</button>
-        <Link href="/controller/audit" className={tabCls(false)}>Audit log →</Link>
       </div>
       {error && <Alert>{error}</Alert>}
       {loading ? <Spinner /> : tab === "setters" ? (
