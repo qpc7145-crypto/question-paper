@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-  BarChart3, BookOpen, Building2, FileText, FolderOpen, GraduationCap, KeyRound, LayoutDashboard, LogOut,
+  BarChart3, BookOpen, Building2, FileText, FolderOpen, GraduationCap, LayoutDashboard, LogOut,
   Menu, Settings, ShieldCheck, UserCircle, Users, X,
 } from "lucide-react";
 import { ROLE_LABEL, type Role } from "@/lib/constants";
@@ -38,7 +38,8 @@ export function AppShell({ role, name, children, locked = false }: { role: Role;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const home = NAV[role][0].href;
-  const items = [...NAV[role], { href: "/account/password", label: "Change Password", icon: KeyRound }];
+  // Controllers change their password on /controller/settings; other roles get a personal Settings page.
+  const items = role === "CONTROLLER" ? NAV[role] : [...NAV[role], { href: "/account/settings", label: "Settings", icon: Settings }];
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
