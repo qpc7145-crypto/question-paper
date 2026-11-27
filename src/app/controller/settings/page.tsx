@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api, useApi } from "@/lib/client";
 import { Alert, Card, Field, PageHeader, Spinner } from "@/components/ui";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
+import { DisplayNameForm } from "@/components/DisplayNameForm";
 
 export default function SettingsPage() {
   const { data, loading } = useApi<{ currentSemester: string; institutionName: string; semesters: string[] }>("/api/controller/settings");
@@ -38,6 +39,7 @@ export default function SettingsPage() {
             <button className="btn-primary">Save settings</button>
           </form>
         </Card>
+        <DisplayNameForm />
         <ChangePasswordForm />
       </div>
     </>

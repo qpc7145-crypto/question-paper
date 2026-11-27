@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
+import { DisplayNameForm } from "@/components/DisplayNameForm";
 import { pageSession } from "@/lib/auth/page";
 
 export default async function AccountSettingsPage() {
@@ -9,7 +10,10 @@ export default async function AccountSettingsPage() {
   return (
     <>
       <PageHeader title="Settings" />
-      <ChangePasswordForm />
+      <div className="space-y-6">
+        <DisplayNameForm />
+        <ChangePasswordForm />
+      </div>
     </>
   );
 }

@@ -352,6 +352,24 @@ const routes: [string, RegExp, Who, Handler][] = [
     audit(me, "PASSWORD_CHANGED", "User", me.id);
     return { ok: true };
   }],
+  ["GET", /^\/api\/auth\/me$/, "ANY", (_m, _q, _b, me) => {
+    const u = userById(me.id);
+    return { user: { email: u?.email ?? "", role: me.role, displayName: me.name || u?.displayName || "", profileComplete: true } };
+  }],
+  ["PATCH", /^\/api\/auth\/profile$/, "ANY", async (_m, _q, b, me) => {
+    const displayName = String(b.displayName ?? "").trim();
+    if (displayName.length < 2) throw new DemoError(400, "Display name must be at least 2 characters");
+    if (displayName.length > 120) throw new DemoError(400, "Display name must be at most 120 characters");
+    const r = await fetch("/api/demo/rename", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName }) });
+    if (!r.ok) throw new DemoError(r.status, ((await r.json().catch(() => ({}))) as { error?: string }).error ?? "Could not update name");
+    mePromise = null; // pick up the re-issued session
+    const u = userById(me.id);
+    if (u && u.displayName !== displayName) {
+      audit(me, "ACCOUNT_UPDATED", "User", me.id, { displayName: { from: u.displayName, to: displayName } });
+      u.displayName = displayName;
+    }
+    return { displayName };
+  }],
 
   // ---- controller ----
   ["GET", /^\/api\/controller\/dashboard$/, "CONTROLLER", (_m, q) => {
