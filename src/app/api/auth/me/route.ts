@@ -1,5 +1,5 @@
-import { requireUser } from "@/lib/auth/server";
-import { ok, route } from "@/lib/http";
+import { requireUser } from "@/server/auth/guard";
+import { ok, route } from "@/server/core/http";
 
 export const GET = route(async () => {
   const u = await requireUser();

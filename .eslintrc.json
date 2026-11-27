@@ -1,1 +1,16 @@
-{ "extends": "next/core-web-vitals" }
+{
+  "extends": "next/core-web-vitals",
+  "overrides": [
+    {
+      "files": ["src/app/**/*.ts", "src/app/**/*.tsx", "src/components/**/*.tsx", "src/lib/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": ["error", {
+          "paths": [
+            { "name": "@/server/core/db", "message": "Routes and UI must not query the database directly. Call a service in src/server/modules instead." },
+            { "name": "@prisma/client", "message": "Routes and UI must not use Prisma directly. Call a service in src/server/modules instead." }
+          ]
+        }]
+      }
+    }
+  ]
+}

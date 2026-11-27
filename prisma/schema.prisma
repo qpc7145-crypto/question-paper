@@ -12,39 +12,99 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ---------- Enums ----------
+
+enum Role {
+  CONTROLLER
+  SETTER
+  TYPIST
+  SUPERINTENDENT
+}
+
+enum PaperStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_MODIFICATION
+  SENT_TO_CENTRE
+  USED
+  ARCHIVED
+}
+
+enum PaperFormat {
+  RICH_TEXT
+  FILE
+}
+
+enum PaperMode {
+  FREE
+  STRUCTURED
+}
+
+enum Season {
+  SPRING
+  SUMMER
+  FALL
+  WINTER
+}
+
+enum ExamType {
+  MIDTERM
+  FINAL
+  SUPPLEMENTARY
+  SPECIAL
+}
+
+enum AssignmentRole {
+  SETTER
+  TYPIST
+}
+
+enum AccessKind {
+  ACCESS
+  DOWNLOAD
+}
+
+enum ResourceKind {
+  SYLLABUS
+  MODEL_PAPER
+}
+
 // ---------- Users & profiles (FR-1..FR-5) ----------
 
 model User {
-  id                String    @id @default(cuid())
-  email             String    @unique
-  passwordHash      String
-  role              String // CONTROLLER | SETTER | TYPIST | SUPERINTENDENT
-  displayName       String
-  isActive          Boolean   @default(true)
-  failedLoginCount  Int       @default(0)
-  lockedUntil       DateTime?
-  sessionVersion    Int       @default(0) // bump to revoke all sessions (e.g. after password reset)
-  lastLoginAt       DateTime?
-  createdAt         DateTime  @default(now())
-  createdById       String?
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String
+  role             Role
+  displayName      String
+  isActive         Boolean   @default(true)
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  sessionVersion   Int       @default(0) // bump to revoke all sessions (e.g. after password reset)
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  createdById      String?
 
-  setterProfile     SetterProfile?
-  superintendent    SuperintendentProfile?
-  centre            Centre?            @relation("CentreSuperintendent")
+  setterProfile  SetterProfile?
+  superintendent SuperintendentProfile?
+  centre         Centre?                @relation("CentreSuperintendent")
 
-  setterSubjects    Subject[]          @relation("SubjectSetter")
-  setterPapers      Paper[]            @relation("PaperSetter")
-  typistPapers      Paper[]            @relation("PaperTypist")
-  revisions         PaperRevision[]
-  passwordResets    PasswordReset[]
-  files             StoredFile[]
+  assignments    PaperAssignment[]
+  paperVersions  PaperVersion[]
+  passwordResets PasswordReset[]
+  files          StoredFile[]
+
+  @@index([role, isActive])
 }
 
 model SetterProfile {
   userId           String   @id
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName         String
-  cnic             String
+  // CNIC is personal data: stored AES-256-GCM encrypted (DATA_ENCRYPTION_KEY), with a keyed
+  // hash for duplicate lookups. Never stored in plain text.
+  cnicEncrypted    String
+  cnicHash         String
   qualification    String
   institution      String
   experienceYears  Int
@@ -54,18 +114,24 @@ model SetterProfile {
   subjectsEligible String // comma separated subject codes / names
   completedAt      DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([cnicHash])
 }
 
 model SuperintendentProfile {
-  userId       String   @id
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName     String
-  cnic         String
-  designation  String
-  organization String
-  phone        String
-  address      String
-  updatedAt    DateTime @updatedAt
+  userId        String   @id
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName      String
+  // See SetterProfile.
+  cnicEncrypted String
+  cnicHash      String
+  designation   String
+  organization  String
+  phone         String
+  address       String
+  updatedAt     DateTime @updatedAt
+
+  @@index([cnicHash])
 }
 
 model Centre {
@@ -83,74 +149,134 @@ model Centre {
   accessLogs       AccessLog[]
 }
 
-// ---------- Subjects & papers (FR-6..FR-22) ----------
+// ---------- Terms, courses, exams & papers (FR-6..FR-22) ----------
 
-model Subject {
-  id                 String    @id @default(cuid())
-  code               String
+// One academic term, e.g. Fall 2026. Exactly one term is current (partial unique
+// index "Term_isCurrent_key" in the migration; Prisma cannot express partial indexes).
+model Term {
+  id        String   @id @default(cuid())
+  season    Season
+  year      Int
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
+  exams     Exam[]
+
+  @@unique([season, year])
+}
+
+// A course across terms (CS-301). Its title is the latest one used; each exam keeps
+// the title printed on that exam's paper.
+model Course {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  title       String
+  externalRef String? // Result system / ERP course id (FR-27)
+  createdAt   DateTime @default(now())
+  exams       Exam[]
+}
+
+// One exam of one course in one term (was Subject). The API still calls it a "subject".
+model Exam {
+  id                 String     @id @default(cuid())
+  courseId           String
+  course             Course     @relation(fields: [courseId], references: [id])
+  termId             String
+  term               Term       @relation(fields: [termId], references: [id])
+  examType           ExamType
   title              String
-  semester           String // e.g. "Fall 2026"
-  examType           String // MIDTERM | FINAL | SUPPLEMENTARY | ...
   examDate           DateTime // exam start date & time
-  submissionDeadline DateTime
-  setterId           String?
-  setter             User?     @relation("SubjectSetter", fields: [setterId], references: [id])
-  externalRef        String? // Result system / ERP mapping (FR-27)
-  createdAt          DateTime  @default(now())
+  submissionDeadline DateTime // CHECK ("submissionDeadline" < "examDate") in the migration
+  externalRef        String? // Result system / ERP mapping for this exam (FR-27)
+  createdAt          DateTime   @default(now())
   paper              Paper?
   resources          Resource[]
 
-  @@unique([code, semester, examType])
+  @@unique([courseId, termId, examType])
+  @@index([termId, examDate])
 }
 
+// Workflow state of an exam's paper. The content lives in immutable PaperVersion rows.
 model Paper {
-  id                String          @id @default(cuid())
-  subjectId         String          @unique
-  subject           Subject         @relation(fields: [subjectId], references: [id])
-  setterId          String
-  setter            User            @relation("PaperSetter", fields: [setterId], references: [id])
-  typistId          String?
-  typist            User?           @relation("PaperTypist", fields: [typistId], references: [id])
-  typistCanSend     Boolean         @default(false) // delegation (FR-13)
+  id               String        @id @default(cuid())
+  examId           String        @unique
+  exam             Exam          @relation(fields: [examId], references: [id])
+  status           PaperStatus   @default(DRAFT)
+  // Latest content. Always set; nullable only because a paper and its first version are
+  // created in the same transaction.
+  currentVersionId String?       @unique
+  currentVersion   PaperVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  // The exact version centres receive, frozen when the paper is sent.
+  sentVersionId    String?
+  sentVersion      PaperVersion? @relation("SentVersion", fields: [sentVersionId], references: [id])
 
-  status            String          @default("DRAFT") // DRAFT | SUBMITTED | UNDER_MODIFICATION | SENT_TO_CENTRE | USED | ARCHIVED
-  format            String          @default("RICH_TEXT") // RICH_TEXT | FILE
-  mode              String          @default("FREE") // FREE | STRUCTURED
-  contentHtml       String          @default("")
-  sectionAHtml      String          @default("")
-  sectionBHtml      String          @default("")
-  sectionCHtml      String          @default("")
-  instructions      String          @default("")
-  totalMarks        Int?
-  durationMinutes   Int?
-  fileId            String?         @unique
-  file              StoredFile?     @relation("PaperFile", fields: [fileId], references: [id])
+  revisionCount   Int       @default(0) // modifications after submission (FR-12/FR-13)
+  submittedAt     DateTime?
+  isLate          Boolean   @default(false)
+  sentAt          DateTime?
+  usedAt          DateTime?
+  archivedAt      DateTime?
+  releasedAsModel Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  revisionCount     Int             @default(0)
-  submittedAt       DateTime?
-  isLate            Boolean         @default(false)
-  sentAt            DateTime?
-  usedAt            DateTime?
-  archivedAt        DateTime?
-  releasedAsModel   Boolean         @default(false)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  versions    PaperVersion[]    @relation("PaperVersions")
+  assignments PaperAssignment[]
+  centres     PaperCentre[]
+  accessLogs  AccessLog[]
 
-  centres           PaperCentre[]
-  revisions         PaperRevision[]
-  accessLogs        AccessLog[]
+  @@index([status])
 }
 
-model PaperRevision {
-  id          String   @id @default(cuid())
-  paperId     String
-  paper       Paper    @relation(fields: [paperId], references: [id], onDelete: Cascade)
-  editorId    String
-  editor      User     @relation(fields: [editorId], references: [id])
-  editorRole  String
-  note        String   @default("")
-  snapshot    String // JSON of the content before the change
-  createdAt   DateTime @default(now())
+// One state of a paper's content. A setter's draft is edited in place until submission;
+// from then on every change by the Controller or Typist adds a new version. Frozen
+// versions are immutable (trigger paper_version_frozen).
+model PaperVersion {
+  id              String      @id @default(cuid())
+  paperId         String
+  paper           Paper       @relation("PaperVersions", fields: [paperId], references: [id])
+  number          Int
+  format          PaperFormat @default(RICH_TEXT)
+  mode            PaperMode   @default(FREE)
+  // { "contentHtml": "...", "sections": { "A": "...", "B": "...", "C": "..." } }
+  content         Json        @default("{}")
+  instructions    String      @default("")
+  totalMarks      Int?
+  durationMinutes Int?
+  fileId          String?
+  file            StoredFile? @relation(fields: [fileId], references: [id])
+  authorId        String
+  author          User        @relation(fields: [authorId], references: [id])
+  authorRole      Role
+  note            String      @default("")
+  frozenAt        DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  currentOf  Paper?      @relation("CurrentVersion")
+  sentOf     Paper[]     @relation("SentVersion")
+  accessLogs AccessLog[]
+
+  @@unique([paperId, number])
+  @@index([fileId])
+}
+
+// Who works on a paper (FR-7, FR-13). Re-assigning revokes the old row instead of
+// overwriting it, so the history of who held a paper is kept. At most one active
+// assignment per paper and role (partial unique index "PaperAssignment_active_key").
+model PaperAssignment {
+  id           String         @id @default(cuid())
+  paperId      String
+  paper        Paper          @relation(fields: [paperId], references: [id])
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+  role         AssignmentRole
+  canSend      Boolean        @default(false) // Typist delegation to send to centres (FR-13)
+  assignedById String?
+  assignedAt   DateTime       @default(now())
+  revokedAt    DateTime?
+
+  @@index([userId, role, revokedAt])
+  @@index([paperId, revokedAt])
 }
 
 // Multi-centre distribution (FR-17)
@@ -167,48 +293,59 @@ model PaperCentre {
   createdAt       DateTime  @default(now())
 
   @@unique([paperId, centreId])
+  @@index([centreId, availableFrom])
 }
 
 // FR-19 usage logging (download time, access time, centre identity)
 model AccessLog {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   paperId   String
-  paper     Paper    @relation(fields: [paperId], references: [id])
+  paper     Paper        @relation(fields: [paperId], references: [id])
+  versionId String // the version that was served
+  version   PaperVersion @relation(fields: [versionId], references: [id])
   centreId  String
-  centre    Centre   @relation(fields: [centreId], references: [id])
+  centre    Centre       @relation(fields: [centreId], references: [id])
   userId    String
-  kind      String // ACCESS | DOWNLOAD
+  kind      AccessKind
   ip        String?
   userAgent String?
-  at        DateTime @default(now())
+  at        DateTime     @default(now())
+
+  @@index([paperId, at])
+  @@index([centreId, at])
 }
 
 // ---------- Files & resources (FR-8, FR-15, FR-16) ----------
 
 model StoredFile {
-  id           String    @id @default(cuid())
-  storageKey   String    @unique // random name inside STORAGE_DIR, never exposed
+  id           String         @id @default(cuid())
+  storageKey   String         @unique // random name inside STORAGE_DIR, never exposed
   originalName String
   mimeType     String
   sizeBytes    Int
   sha256       String
   uploadedById String
-  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
-  createdAt    DateTime  @default(now())
-  paper        Paper?    @relation("PaperFile")
+  uploadedBy   User           @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime       @default(now())
+  versions     PaperVersion[]
   resource     Resource?
+
+  @@index([uploadedById])
 }
 
 model Resource {
-  id        String     @id @default(cuid())
-  kind      String // SYLLABUS | MODEL_PAPER
+  id        String       @id @default(cuid())
+  kind      ResourceKind
   title     String
   semester  String?
-  subjectId String?
-  subject   Subject?   @relation(fields: [subjectId], references: [id])
-  fileId    String     @unique
-  file      StoredFile @relation(fields: [fileId], references: [id])
-  createdAt DateTime   @default(now())
+  examId    String?
+  exam      Exam?        @relation(fields: [examId], references: [id])
+  fileId    String       @unique
+  file      StoredFile   @relation(fields: [fileId], references: [id])
+  createdAt DateTime     @default(now())
+
+  @@index([kind])
+  @@index([examId])
 }
 
 // ---------- Security ----------
@@ -222,6 +359,8 @@ model PasswordReset {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // Append-only, hash-chained audit log (FR-26). UPDATE/DELETE are blocked by
@@ -231,21 +370,58 @@ model AuditLog {
   at        DateTime @default(now())
   userId    String?
   userEmail String?
-  role      String?
+  role      Role?
   action    String
   entity    String?
   entityId  String?
+  // Kept as TEXT, not jsonb: the hash chain covers these exact bytes, and jsonb
+  // would re-serialise them (key order, whitespace) and break verification.
   details   String   @default("{}")
   ip        String?
   prevHash  String
   hash      String   @unique
 
-  @@index([action])
-  @@index([userId])
+  @@index([action, at])
+  @@index([userId, at])
+  @@index([entity, entityId])
   @@index([at])
 }
 
 model Setting {
   key   String @id
   value String
+}
+
+// ---------- Integrations & notifications ----------
+
+// One external system allowed to call /api/v1/integration (FR-27/FR-28). Keys are shown
+// once at creation; only their SHA-256 is stored. Scopes are module names: result-system, erp.
+model ApiClient {
+  id          String    @id @default(cuid())
+  name        String
+  keyHash     String    @unique
+  keyPrefix   String // first characters of the key, to recognise it in the list
+  scopes      String[]
+  createdById String?
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+}
+
+// Outgoing email, written in the same transaction as the event that causes it and
+// delivered by a worker (cron), so a mail-server outage never fails or loses an action.
+model OutboxMessage {
+  id        String    @id @default(cuid())
+  kind      String // DEADLINE_REMINDER, ...
+  recipient String
+  subject   String
+  body      String
+  dedupeKey String?   @unique // the same reminder is queued at most once
+  runAfter  DateTime  @default(now())
+  attempts  Int       @default(0)
+  sentAt    DateTime?
+  lastError String?
+  createdAt DateTime  @default(now())
+
+  @@index([sentAt, runAfter])
 }

@@ -72,6 +72,8 @@ export const AUDIT_ACTIONS = [
   "SETTINGS_UPDATED",
   "AUDIT_EXPORTED",
   "INTEGRATION_CALL",
+  "API_CLIENT_CREATED",
+  "API_CLIENT_REVOKED",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { verifySession } from "@/lib/auth/session";
+import { verifySession } from "@/server/auth/session";
 import { ROLE_HOME, SESSION_COOKIE, type Role } from "@/lib/constants";
 import { DEMO } from "@/lib/demo/flag";
 

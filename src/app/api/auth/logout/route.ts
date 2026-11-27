@@ -1,11 +1,11 @@
-import { audit } from "@/lib/audit";
-import { clearSession, getSessionUser } from "@/lib/auth/server";
-import { ok, route } from "@/lib/http";
+import { clearSession, getSessionUser } from "@/server/auth/guard";
+import { ok, route } from "@/server/core/http";
+import { auditLogout } from "@/server/modules/auth/service";
 import { DEMO } from "@/lib/demo/flag";
 
 export const POST = route(async () => {
   const u = DEMO ? null : await getSessionUser();
-  if (u) await audit({ actor: u, action: "LOGOUT" });
+  if (u) await auditLogout(u);
   clearSession();
   return ok({ ok: true });
 });

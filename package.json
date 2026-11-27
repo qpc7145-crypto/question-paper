@@ -7,14 +7,14 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && (if [ -n \"$DIRECT_URL\" ]; then prisma db push --skip-generate && tsx prisma/seed.ts; else echo 'No DIRECT_URL set: frontend-only build, skipping database setup'; fi) && next build",
+    "vercel-build": "prisma generate && (if [ -n \"$DIRECT_URL\" ]; then tsx prisma/deploy.ts && tsx prisma/seed.ts; else echo 'No DIRECT_URL set: frontend-only build, skipping database setup'; fi) && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:push": "prisma db push",
+    "db:migrate": "tsx prisma/deploy.ts",
     "db:seed": "tsx prisma/seed.ts",
-    "setup": "prisma db push && tsx prisma/seed.ts",
-    "setup:demo": "prisma db push && tsx prisma/seed.ts --demo"
+    "setup": "tsx prisma/deploy.ts && tsx prisma/seed.ts",
+    "setup:demo": "tsx prisma/deploy.ts && tsx prisma/seed.ts --demo"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

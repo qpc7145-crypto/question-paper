@@ -1,27 +1,26 @@
-import { prisma } from "@/lib/db";
-import { audit } from "@/lib/audit";
-import { fail, route } from "@/lib/http";
-import { requireSetterWithProfile } from "@/lib/auth/server";
-import { loadPaper } from "@/lib/papers";
+import { route } from "@/server/core/http";
+import { requireSetterWithProfile } from "@/server/auth/guard";
+import { auditStandalone } from "@/server/modules/audit/service";
+import { getModelPaper } from "@/server/modules/papers/service";
+import { sentState } from "@/server/modules/papers/serializers";
+import { paperFileResponse } from "@/server/modules/papers/files";
 import { htmlResponse, renderPaperDocument } from "@/lib/render-paper";
-import { getCurrentSemester, getInstitutionName } from "@/lib/settings";
-import { fileResponse } from "@/lib/storage";
+import { getInstitutionName } from "@/server/modules/settings/service";
 
 type Ctx = { params: { id: string } };
 
-// FR-22: view a released model paper. No centre, typist or setter details are included.
+// FR-22: view a released model paper — the version that was actually used in the exam.
+// No centre, typist or setter details are included.
 export const GET = route(async (_req: Request, { params }: Ctx) => {
   const u = await requireSetterWithProfile();
-  const p = await loadPaper(params.id);
-  const current = await getCurrentSemester();
-  if (p.status !== "USED" || !p.releasedAsModel || p.subject.semester === current) return fail(404, "Model paper not found");
-  await audit({ actor: u, action: "RESOURCE_DOWNLOADED", entity: "ModelPaper", entityId: p.id });
-  if (p.format === "FILE" && p.fileId) {
-    const f = await prisma.storedFile.findUniqueOrThrow({ where: { id: p.fileId } });
-    return fileResponse(f, `${p.subject.code}-${p.subject.semester}-model.${f.originalName.split(".").pop()}`);
+  const p = await getModelPaper(params.id);
+  const s = sentState(p);
+  await auditStandalone({ actor: u, action: "RESOURCE_DOWNLOADED", entity: "ModelPaper", entityId: p.id });
+  if (s.format === "FILE" && s.fileId) {
+    return paperFileResponse(s.fileId, (ext) => `${s.subject.code}-${s.subject.semester}-model.${ext}`, () => false);
   }
-  const html = renderPaperDocument(p, { institution: await getInstitutionName(), banner: "MODEL PAPER — for reference only" });
-  return htmlResponse(html, `${p.subject.code}-model.html`, false);
+  const html = renderPaperDocument(s, { institution: await getInstitutionName(), banner: "MODEL PAPER — for reference only" });
+  return htmlResponse(html, `${s.subject.code}-model.html`, false);
 });
 
 export const dynamic = "force-dynamic";

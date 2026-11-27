@@ -1,10 +1,10 @@
-import { prisma } from "@/lib/db";
-import { fail, route } from "@/lib/http";
-import { requireUser } from "@/lib/auth/server";
-import { loadPaper } from "@/lib/papers";
+import { fail, route } from "@/server/core/http";
+import { requireUser } from "@/server/auth/guard";
+import { getPaper } from "@/server/modules/papers/service";
+import { paperState } from "@/server/modules/papers/serializers";
+import { paperFileResponse } from "@/server/modules/papers/files";
 import { htmlResponse, renderPaperDocument } from "@/lib/render-paper";
-import { fileResponse } from "@/lib/storage";
-import { getInstitutionName } from "@/lib/settings";
+import { getInstitutionName } from "@/server/modules/settings/service";
 
 type Ctx = { params: { id: string } };
 
@@ -12,22 +12,22 @@ type Ctx = { params: { id: string } };
 // they only get the time-gated download (FR-18).
 export const GET = route(async (_req: Request, { params }: Ctx) => {
   const actor = await requireUser("CONTROLLER", "SETTER", "TYPIST");
-  const p = await loadPaper(params.id);
-  if (actor.role === "SETTER" && (p.setterId !== actor.id || p.status === "ARCHIVED")) return fail(404, "Paper not found");
-  if (actor.role === "TYPIST" && (p.typistId !== actor.id || p.status === "ARCHIVED" || p.status === "DRAFT")) return fail(404, "Paper not found");
-
-  if (p.format === "FILE") {
-    if (!p.fileId) return fail(404, "No file uploaded");
-    const f = await prisma.storedFile.findUniqueOrThrow({ where: { id: p.fileId } });
-    const ext = f.originalName.split(".").pop();
+  const p = await getPaper(actor, params.id);
+  const s = paperState(p);
+  if (s.format === "FILE") {
+    if (!s.fileId) return fail(404, "No file uploaded");
     // Only the Controller sees the original file name (it may reveal the uploader).
-    return fileResponse(f, actor.role === "CONTROLLER" ? f.originalName : `${p.subject.code}-paper.${ext}`, f.mimeType === "application/pdf");
+    return paperFileResponse(
+      s.fileId,
+      (ext, original) => (actor.role === "CONTROLLER" ? original : `${s.subject.code}-paper.${ext}`),
+      (mime) => mime === "application/pdf",
+    );
   }
-  const html = renderPaperDocument(p, {
+  const html = renderPaperDocument(s, {
     institution: await getInstitutionName(),
     banner: `CONFIDENTIAL PREVIEW — status: ${p.status}`,
   });
-  return htmlResponse(html, `${p.subject.code}-preview.html`, false);
+  return htmlResponse(html, `${s.subject.code}-preview.html`, false);
 });
 
 export const dynamic = "force-dynamic";

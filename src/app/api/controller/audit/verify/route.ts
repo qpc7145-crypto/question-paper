@@ -1,6 +1,6 @@
-import { ok, route } from "@/lib/http";
-import { requireUser } from "@/lib/auth/server";
-import { verifyAuditChain } from "@/lib/audit";
+import { ok, route } from "@/server/core/http";
+import { requireUser } from "@/server/auth/guard";
+import { verifyAuditChain } from "@/server/modules/audit/service";
 
 // Recomputes the hash chain to prove no log entry was altered or removed.
 export const GET = route(async () => {

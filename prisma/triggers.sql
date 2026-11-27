@@ -45,3 +45,15 @@ DROP TRIGGER IF EXISTS paper_archived_locked ON "Paper";
 --split
 CREATE TRIGGER paper_archived_locked BEFORE UPDATE OR DELETE ON "Paper"
   FOR EACH ROW WHEN (OLD.status = 'ARCHIVED') EXECUTE FUNCTION qpb_paper_archived_locked();
+--split
+-- Step 4: paper versions are immutable once frozen (a setter's working draft is not frozen).
+CREATE OR REPLACE FUNCTION qpb_paper_version_frozen() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'Paper versions are immutable once frozen';
+END;
+$$ LANGUAGE plpgsql;
+--split
+DROP TRIGGER IF EXISTS paper_version_frozen ON "PaperVersion";
+--split
+CREATE TRIGGER paper_version_frozen BEFORE UPDATE OR DELETE ON "PaperVersion"
+  FOR EACH ROW WHEN (OLD."frozenAt" IS NOT NULL) EXECUTE FUNCTION qpb_paper_version_frozen();

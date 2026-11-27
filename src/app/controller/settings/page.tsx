@@ -4,6 +4,7 @@ import { api, useApi } from "@/lib/client";
 import { Alert, Card, Field, PageHeader, Spinner } from "@/components/ui";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { DisplayNameForm } from "@/components/DisplayNameForm";
+import { ApiClientsCard } from "@/components/ApiClientsCard";
 
 export default function SettingsPage() {
   const { data, loading } = useApi<{ currentSemester: string; institutionName: string; semesters: string[] }>("/api/controller/settings");
@@ -32,13 +33,14 @@ export default function SettingsPage() {
             <Field label="Institution name" hint="Printed on the header of every question paper">
               <input className="input" required value={f.institutionName} onChange={(e) => setF({ ...f, institutionName: e.target.value })} />
             </Field>
-            <Field label="Current semester" hint="Model papers can only be released from semesters other than this one">
+            <Field label="Current semester" hint="Season and year, e.g. Fall 2026. Model papers can only be released from other semesters">
               <input className="input" required list="sem" value={f.currentSemester} onChange={(e) => setF({ ...f, currentSemester: e.target.value })} />
               <datalist id="sem">{data?.semesters.map((s) => <option key={s} value={s} />)}</datalist>
             </Field>
             <button className="btn-primary">Save settings</button>
           </form>
         </Card>
+        <ApiClientsCard />
         <DisplayNameForm />
         <ChangePasswordForm />
       </div>

@@ -50,7 +50,7 @@ export default function SubjectsPage() {
   }
 
   async function assign(s: Subject, setterId: string) {
-    if (s.setter && !(await confirmAction("Re-assigning will discard the current setter's draft for this subject. Continue?", { confirmLabel: "Re-assign" }))) return reload();
+    if (s.setter && !(await confirmAction("Re-assigning gives the new setter a blank draft. The current setter's draft is kept in the paper's history but they lose access to it. Continue?", { confirmLabel: "Re-assign" }))) return reload();
     try {
       await api(`/api/controller/subjects/${s.id}`, { method: "PATCH", json: { setterId: setterId || null } });
       setMsg({ tone: "success", text: `Setter updated for ${s.code}` });

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { signSession } from "@/lib/auth/session";
+import { signSession } from "@/server/auth/session";
 import { ROLE_HOME, ROLES, SESSION_COOKIE, SESSION_TTL_SECONDS, type Role } from "@/lib/constants";
 import { DEMO, DEMO_USERS, USERS } from "@/lib/demo/data";
 

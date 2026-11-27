@@ -15,6 +15,10 @@ const now = () => new Date().toISOString();
 type AccessEvent = { id: string; paperId: string; centreId: string; kind: "VIEW" | "DOWNLOAD"; at: string; ip: string };
 const ACCESS: AccessEvent[] = [];
 
+// Integration API keys (not persisted across reloads in the preview).
+type DemoApiClient = { id: string; name: string; keyPrefix: string; scopes: string[]; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
+const API_CLIENTS: DemoApiClient[] = [];
+
 class DemoError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -635,6 +639,26 @@ const routes: [string, RegExp, Who, Handler][] = [
     };
   }],
   ["GET", /^\/api\/controller\/audit\/verify$/, "CONTROLLER", () => ({ valid: true, total: AUDIT.length, brokenAtSeq: null })],
+  ["GET", /^\/api\/controller\/api-clients$/, "CONTROLLER", () => ({ clients: API_CLIENTS, modules: ["result-system", "erp"] })],
+  ["POST", /^\/api\/controller\/api-clients$/, "CONTROLLER", (_m, _q, b, me) => {
+    const scopes = (b.scopes as string[] | undefined) ?? [];
+    if (String(b.name ?? "").trim().length < 2) throw new DemoError(400, "name: String must contain at least 2 character(s)");
+    if (!scopes.length) throw new DemoError(400, "scopes: Choose at least one module");
+    const key = `qpb_demo_${Math.random().toString(36).slice(2, 14)}`;
+    const client = { id: newId("api"), name: String(b.name).trim(), keyPrefix: key.slice(0, 12), scopes, createdAt: now(), lastUsedAt: null, revokedAt: null as string | null };
+    API_CLIENTS.unshift(client);
+    audit(me, "API_CLIENT_CREATED", "ApiClient", client.id, { name: client.name, scopes });
+    return { client, key };
+  }],
+  ["DELETE", /^\/api\/controller\/api-clients\/([^/]+)$/, "CONTROLLER", (m, _q, _b, me) => {
+    const c = API_CLIENTS.find((x) => x.id === m[1]);
+    if (!c) throw new DemoError(404, "API client not found");
+    if (!c.revokedAt) {
+      c.revokedAt = now();
+      audit(me, "API_CLIENT_REVOKED", "ApiClient", c.id, { name: c.name });
+    }
+    return { ok: true };
+  }],
   ["GET", /^\/api\/controller\/settings$/, "CONTROLLER", () => ({ currentSemester, institutionName, semesters: semesters() })],
   ["PUT", /^\/api\/controller\/settings$/, "CONTROLLER", (_m, _q, b, me) => {
     const sem = String(b.currentSemester).trim();

@@ -1,26 +1,15 @@
-import { prisma } from "@/lib/db";
-import { ok, route } from "@/lib/http";
-import { requireUser } from "@/lib/auth/server";
-import { listSemesters, getCurrentSemester } from "@/lib/settings";
-import { controllerPaperView, paperInclude } from "@/lib/serializers";
+import { ok, route } from "@/server/core/http";
+import { requireUser } from "@/server/auth/guard";
+import { listPapers } from "@/server/modules/papers/service";
+import { controllerPaperView, listView } from "@/server/modules/papers/serializers";
+import { getCurrentSemester, listSemesters } from "@/server/modules/settings/service";
 
 export const GET = route(async (req: Request) => {
-  await requireUser("CONTROLLER");
+  const actor = await requireUser("CONTROLLER");
   const sp = new URL(req.url).searchParams;
-  const semester = sp.get("semester") || undefined;
-  const status = sp.get("status") || undefined;
-  const papers = await prisma.paper.findMany({
-    where: { status, subject: { semester } },
-    include: paperInclude,
-    orderBy: { subject: { examDate: "asc" } },
-  });
+  const papers = await listPapers(actor, { semester: sp.get("semester") || undefined, status: sp.get("status") }, "examDate");
   return ok({
-    papers: papers.map((p) => {
-      const v = controllerPaperView(p);
-      // List view: drop heavy content fields.
-      const { contentHtml: _a, sectionAHtml: _b, sectionBHtml: _c, sectionCHtml: _d, ...rest } = v;
-      return rest;
-    }),
+    papers: papers.map((p) => listView(controllerPaperView(p))),
     semesters: await listSemesters(),
     currentSemester: await getCurrentSemester(),
   });
