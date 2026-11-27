@@ -29,7 +29,8 @@ export async function api<T = unknown>(url: string, init?: RequestInit & { json?
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    await handle401(res.status);
+    // A 401 from sign-in means wrong credentials, not an expired session: let the form show it.
+    if (!url.startsWith("/api/auth/login")) await handle401(res.status);
     throw new ApiError(res.status, (data as { error?: string }).error || `Request failed (${res.status})`);
   }
   return data as T;
