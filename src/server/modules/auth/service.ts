@@ -14,8 +14,26 @@ const GENERIC_LOGIN_ERROR = "Invalid email or password";
 let dummyHash: Promise<string> | null = null;
 const burnPasswordCheck = (password: string) => (dummyHash ??= hashPassword(crypto.randomBytes(16).toString("hex"))).then((h) => checkPassword(password, h));
 
+// Every failed sign-in answers no sooner than this after the request started. Unknown and
+// known accounts do different database work, and against a remote database that difference
+// is ~100-200 ms; a fixed floor above the slowest path hides it.
+const FAILED_LOGIN_FLOOR_MS = 1500;
+
 // Returns the user to issue a session for, or throws. Every outcome is audited.
 export async function login(emailInput: string, password: string) {
+  const started = Date.now();
+  try {
+    return await attemptLogin(emailInput, password);
+  } catch (e) {
+    if (e instanceof HttpError && e.status === 401) {
+      const wait = started + FAILED_LOGIN_FLOOR_MS - Date.now();
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    }
+    throw e;
+  }
+}
+
+async function attemptLogin(emailInput: string, password: string) {
   const email = emailInput.toLowerCase();
   const user = await prisma.user.findUnique({
     where: { email },
