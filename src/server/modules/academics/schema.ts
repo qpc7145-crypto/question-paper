@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EXAM_TYPES } from "@/lib/constants";
-import { SEMESTER_HINT, SEMESTER_RE } from "@/lib/semesters";
+import { isValidSemester, SEMESTER_HINT, semesterYear } from "@/lib/semesters";
 
 export const subjectSchema = z
   .object({
@@ -9,11 +9,17 @@ export const subjectSchema = z
     semester: z
       .string()
       .transform((s) => s.trim().replace(/\s+/g, " "))
-      .refine((s) => SEMESTER_RE.test(s), { message: `Semester must be ${SEMESTER_HINT.toLowerCase()}` }),
+      .refine((s) => isValidSemester(s), {
+        message: `Semester must be ${SEMESTER_HINT.toLowerCase()}, with a year from 2000 to five years ahead`,
+      }),
     examType: z.enum(EXAM_TYPES),
     examDate: z.coerce.date(),
     submissionDeadline: z.coerce.date(),
     setterId: z.string().nullable().optional(),
+  })
+  .refine((s) => Math.abs(semesterYear(s.semester) - s.examDate.getFullYear()) <= 1, {
+    message: "The exam date must fall in or next to the semester's year",
+    path: ["examDate"],
   })
   .refine((s) => s.submissionDeadline < s.examDate, {
     message: "Submission deadline must be before the exam date",

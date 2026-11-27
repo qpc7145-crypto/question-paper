@@ -8,7 +8,7 @@ import { formatRemaining, useNow } from "@/components/Countdown";
 type Assignment = {
   paperId: string;
   subject: { code: string; title: string; semester: string; examType: string };
-  availableFrom: string; durationMinutes: number | null; totalMarks: number | null;
+  examDate: string; availableFrom: string; durationMinutes: number | null; totalMarks: number | null;
   unlocked: boolean; downloadCount: number; firstAccessAt?: string | null; firstDownloadAt: string | null; status: string;
 };
 type Data = { centre: { code: string; name: string; city: string }; serverNow: string; papers: Assignment[] };
@@ -51,7 +51,7 @@ export default function CentreDashboard() {
         <Stat label="Used" value={papers.filter((p) => p.status === "USED").length} />
       </div>
       <div className="mb-4">
-        <Alert tone="info">Papers unlock automatically at the scheduled exam time (server clock). Every access and download is logged with time and centre identity.</Alert>
+        <Alert tone="info">Papers unlock automatically at their scheduled unlock time, shortly before the exam starts (server clock). Every access and download is logged with time and centre identity.</Alert>
       </div>
       {papers.length === 0 ? (
         <Card><Empty icon={<CalendarClock className="h-8 w-8" />} title="No papers scheduled for your centre" /></Card>
@@ -59,7 +59,7 @@ export default function CentreDashboard() {
         <div className="space-y-8">
           {open.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Available now</h2>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Unlocked</h2>
               <div className="grid gap-4 md:grid-cols-2">{open.map((p) => <PaperCard key={p.paperId} p={p} now={now} onOpen={reload} />)}</div>
             </section>
           )}
@@ -87,10 +87,12 @@ function PaperCard({ p, now, onOpen }: { p: Assignment; now: number; onOpen: () 
           <p className="text-sm text-muted">{p.subject.title}</p>
           <p className="mt-1 text-xs text-muted">{p.subject.examType} · {p.subject.semester}{p.durationMinutes ? ` · ${p.durationMinutes} min` : ""}{p.totalMarks ? ` · ${p.totalMarks} marks` : ""}</p>
         </div>
-        {p.status === "USED" || p.downloadCount > 0 || p.firstAccessAt ? <StatusBadge status="USED" /> : locked ? <Pill><Lock className="h-3 w-3" /> Locked</Pill> : <Pill tone="green"><Unlock className="h-3 w-3" /> Unlocked</Pill>}
+        {p.status === "USED" ? <StatusBadge status="USED" /> : locked ? <Pill><Lock className="h-3 w-3" /> Locked</Pill> : <Pill tone="green"><Unlock className="h-3 w-3" /> Unlocked</Pill>}
       </div>
       <div className="mt-4 rounded-md bg-[#F8FAFC] px-4 py-3">
-        <p className="text-xs text-muted">Scheduled exam time</p>
+        <p className="text-xs text-muted">Exam starts</p>
+        <p className="text-sm font-medium">{fmtDateTime(p.examDate)}</p>
+        <p className="mt-2 text-xs text-muted">{locked ? "Unlocks at" : "Unlocked at"}</p>
         <p className="text-sm font-medium">{fmtDateTime(p.availableFrom)}</p>
         {locked && (
           <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-ink" aria-live="polite">

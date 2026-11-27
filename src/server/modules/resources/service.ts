@@ -5,6 +5,7 @@ import { auditStandalone, writeAudit } from "@/server/modules/audit/service";
 import { MODEL_PAPER_SCOPE, resourceScope, type Actor } from "@/server/policy";
 import { examInclude, subjectView, type ExamFull } from "@/server/modules/papers/serializers";
 import { saveUpload } from "@/server/infra/storage";
+import { isValidSemester, SEMESTER_HINT } from "@/lib/semesters";
 
 // ---------- Controller (FR-15) ----------
 
@@ -35,6 +36,7 @@ export async function uploadResource(
   if (input.kind !== "SYLLABUS" && input.kind !== "MODEL_PAPER") throw new HttpError(400, "kind must be SYLLABUS or MODEL_PAPER");
   const kind: ResourceKind = input.kind;
   if (input.title.length < 2 || input.title.length > 200) throw new HttpError(400, "Title is required");
+  if (input.semester && !isValidSemester(input.semester.replace(/s+/g, " "))) throw new HttpError(400, `Semester must be ${SEMESTER_HINT.toLowerCase()}, with a year from 2000 to five years ahead`);
   if (!(input.file instanceof File)) throw new HttpError(400, "No file uploaded");
   if (input.subjectId && !(await prisma.exam.findUnique({ where: { id: input.subjectId } }))) throw new HttpError(400, "Unknown subject");
   const stored = await saveUpload(input.file, actor.id);

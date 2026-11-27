@@ -172,6 +172,7 @@ export function centreAssignmentView(
   return {
     paperId: a.paperId,
     subject: { code: s.code, title: s.title, semester: s.semester, examType: s.examType },
+    examDate: s.examDate,
     availableFrom: a.availableFrom,
     durationMinutes: a.paper.sentVersion?.durationMinutes ?? null,
     totalMarks: a.paper.sentVersion?.totalMarks ?? null,
@@ -179,7 +180,9 @@ export function centreAssignmentView(
     downloadCount: a.downloadCount,
     firstAccessAt: a.firstAccessAt,
     firstDownloadAt: a.firstDownloadAt,
-    status: a.paper.status === "USED" ? "USED" : "SENT_TO_CENTRE",
+    // Per centre: "used" means THIS centre opened it. The paper-level USED status is set by
+    // whichever centre opens it first and says nothing about the others.
+    status: a.firstAccessAt || a.downloadCount > 0 ? "USED" : "SENT_TO_CENTRE",
   };
 }
 

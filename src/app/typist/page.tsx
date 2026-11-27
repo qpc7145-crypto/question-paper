@@ -28,7 +28,7 @@ export default function TypistDashboard() {
         <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="Assigned" value={papers.length} />
           <Stat label="To modify" value={papers.filter((p) => p.editable).length} tone={papers.some((p) => p.editable) ? "amber" : undefined} />
-          <Stat label="Delegated to send" value={papers.filter((p) => p.canSend && p.editable).length} />
+          <Stat label="Delegated to send" value={papers.filter((p) => p.canSend).length} />
           <Stat label="Sent / used" value={papers.filter((p) => p.status === "SENT_TO_CENTRE" || p.status === "USED").length} />
         </div>
       )}

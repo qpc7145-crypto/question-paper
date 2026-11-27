@@ -9,6 +9,10 @@ import { sendMail } from "@/server/infra/mailer";
 const MAX_FAILS = 5;
 const LOCK_MINUTES = 15;
 const GENERIC_LOGIN_ERROR = "Invalid email or password";
+// Checked when the account doesn't exist or is inactive, so every failed sign-in costs one
+// bcrypt compare and response time doesn't reveal which emails have accounts.
+let dummyHash: Promise<string> | null = null;
+const burnPasswordCheck = (password: string) => (dummyHash ??= hashPassword(crypto.randomBytes(16).toString("hex"))).then((h) => checkPassword(password, h));
 
 // Returns the user to issue a session for, or throws. Every outcome is audited.
 export async function login(emailInput: string, password: string) {
@@ -18,6 +22,7 @@ export async function login(emailInput: string, password: string) {
     include: { setterProfile: { select: { userId: true } }, superintendent: { select: { userId: true } } },
   });
   if (!user) {
+    await burnPasswordCheck(password);
     await auditStandalone({ actor: null, action: "LOGIN_FAILED", details: { email: emailInput, reason: "unknown_account" } });
     throw new HttpError(401, GENERIC_LOGIN_ERROR);
   }
@@ -27,6 +32,7 @@ export async function login(emailInput: string, password: string) {
     throw new HttpError(423, `Account temporarily locked after repeated failures. Try again after ${user.lockedUntil.toLocaleTimeString()}.`);
   }
   if (!user.isActive) {
+    await burnPasswordCheck(password);
     await auditStandalone({ actor, action: "LOGIN_FAILED", details: { reason: "inactive" } });
     throw new HttpError(401, GENERIC_LOGIN_ERROR);
   }

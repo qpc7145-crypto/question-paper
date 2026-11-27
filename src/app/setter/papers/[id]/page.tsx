@@ -12,6 +12,14 @@ type SetterPaper = PaperContent & {
   subject: { code: string; title: string; semester: string; examType: string; examDate: string; submissionDeadline: string };
 };
 
+// Mirrors the server's rule (papers/lifecycle.ts hasContent), so an empty paper is caught
+// before the confirm dialog. The server still enforces it.
+function savedHasContent(p: PaperContent) {
+  if (p.format === "FILE") return !!p.file;
+  const text = (s?: string) => (s ?? "").replace(/<[^>]*>/g, "").trim().length > 0;
+  return p.mode === "STRUCTURED" ? text(p.sectionAHtml) || text(p.sectionBHtml) || text(p.sectionCHtml) : text(p.contentHtml);
+}
+
 export default function SetterPaperPage({ params }: { params: { id: string } }) {
   const { data, error, loading, setData } = useApi<{ paper: SetterPaper }>(`/api/setter/papers/${params.id}`);
   const [busy, setBusy] = useState(false);
@@ -21,6 +29,7 @@ export default function SetterPaperPage({ params }: { params: { id: string } }) 
 
   async function submit() {
     if (dirty.current) return setMsg("Save your draft before submitting.");
+    if (data && !savedHasContent(data.paper)) return setMsg("This paper has no content yet. Write it in the editor or upload a file, save, then submit.");
     if (!(await confirmAction("Submit this paper as final? You will not be able to edit it afterwards.", { title: "Submit final paper", confirmLabel: "Submit" }))) return;
     setBusy(true);
     setMsg(null);

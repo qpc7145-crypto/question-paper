@@ -756,8 +756,8 @@ const routes: [string, RegExp, Who, Handler][] = [
     if (!c) throw new DemoError(403, "Your account is not linked to an examination centre yet. Contact the Examinations Office.");
     const papers = centreAssignments(c.id).map(({ p, c: a }) => ({
       paperId: p.id, subject: { code: p.subject.code, title: p.subject.title, semester: p.subject.semester, examType: p.subject.examType },
-      availableFrom: a.availableFrom, durationMinutes: p.durationMinutes, totalMarks: p.totalMarks, unlocked: new Date(a.availableFrom) <= new Date(),
-      downloadCount: a.downloadCount, firstAccessAt: a.firstAccessAt, firstDownloadAt: a.firstDownloadAt, status: p.status === "USED" ? "USED" : "SENT_TO_CENTRE",
+      examDate: p.subject.examDate, availableFrom: a.availableFrom, durationMinutes: p.durationMinutes, totalMarks: p.totalMarks, unlocked: new Date(a.availableFrom) <= new Date(),
+      downloadCount: a.downloadCount, firstAccessAt: a.firstAccessAt, firstDownloadAt: a.firstDownloadAt, status: a.firstAccessAt || a.downloadCount > 0 ? "USED" : "SENT_TO_CENTRE",
     }));
     return { centre: { code: c.code, name: c.name, city: c.city }, serverNow: now(), papers };
   }],

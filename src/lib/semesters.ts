@@ -3,6 +3,15 @@ export const SEMESTER_PATTERN = "(Spring|Summer|Fall|Winter) [0-9]{4}";
 export const SEMESTER_RE = /^(Spring|Summer|Fall|Winter) \d{4}$/;
 export const SEMESTER_HINT = "Season and year, e.g. Fall 2026";
 
+// Years outside this range are typos ("Fall 1850", "Fall 9999"), not real semesters.
+export const MIN_SEMESTER_YEAR = 2000;
+export const semesterYear = (s: string) => Number(s.slice(-4));
+export function isValidSemester(s: string, now = new Date()) {
+  if (!SEMESTER_RE.test(s)) return false;
+  const y = semesterYear(s);
+  return y >= MIN_SEMESTER_YEAR && y <= now.getFullYear() + 5;
+}
+
 // Sort newest first; unknown formats alphabetically.
 export function compareSemesters(a: string, b: string) {
   const parse = (s: string) => {
@@ -24,6 +33,9 @@ export function unlockTimeError(at: Date, examDate: Date, centre: string, nowMs 
   if (at.getTime() <= nowMs) return `The unlock time for ${centre} is in the past. Choose a time at or near the exam start.`;
   if (at.getTime() < examDate.getTime() - UNLOCK_LEAD_MINUTES * 60_000) {
     return `The unlock time for ${centre} is more than ${UNLOCK_LEAD_MINUTES} minutes before the exam starts.`;
+  }
+  if (at.getTime() > examDate.getTime()) {
+    return `The unlock time for ${centre} is after the exam starts. The centre must have the paper by the exam start.`;
   }
   return null;
 }
